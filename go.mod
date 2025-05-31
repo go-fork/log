@@ -1,0 +1,5 @@
+module go.fork.vn/log
+
+go 1.23.9
+
+require go.fork.vn/di v0.1.0
