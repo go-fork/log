@@ -40,7 +40,7 @@ Service Provider cho phép tích hợp dễ dàng gói `log` vào ứng dụng s
 
 ```go
 // Trong file bootstrap của ứng dụng
-import "github.com/go-fork/providers/log"
+import "go.fork.vn/log"
 
 func bootstrap(app interface{}) {
     // Đăng ký log provider
