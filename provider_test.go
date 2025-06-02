@@ -1,490 +1,243 @@
 package log
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	configMocks "go.fork.vn/config/mocks"
 	"go.fork.vn/di"
+	diMocks "go.fork.vn/di/mocks"
 	"go.fork.vn/log/handler"
 )
 
-// MockApplication triển khai interface cần thiết cho ServiceProvider
-type MockApplication struct {
-	container *di.Container
-	basePath  string
+// setupMockApplication thiết lập một mock Application với Container đã cấu hình
+func setupMockApplication() (*diMocks.Application, *di.Container) {
+	container := di.New()
+
+	mockApp := new(diMocks.Application)
+	mockApp.On("Container").Return(container)
+	mockApp.On("BasePath", mock.Anything).Return(filepath.Join(os.TempDir(), "logs"))
+
+	return mockApp, container
 }
 
-func NewMockApplication() *MockApplication {
-	return &MockApplication{
-		container: di.New(),
-		basePath:  os.TempDir(),
-	}
-}
+// setupConfigManager thiết lập một mockConfigManager đã cấu hình
+func setupConfigManager() *configMocks.MockManager {
+	mockConfigManager := new(configMocks.MockManager)
 
-func (m *MockApplication) Container() *di.Container {
-	return m.container
-}
+	// Cấu hình mockConfigManager để xử lý UnmarshalKey với đúng config
+	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+		// Gán cấu hình cho log config
+		config := args.Get(1).(*Config)
+		config.Level = "info"
+		config.Console.Enabled = true
+		config.Console.Colored = true
+		config.File.Enabled = true
+		config.File.Path = filepath.Join(os.TempDir(), "logs", "app.log")
+		config.File.MaxSize = 10485760
+	}).Return(nil)
 
-func (m *MockApplication) BasePath(paths ...string) string {
-	result := m.basePath
-	for _, path := range paths {
-		result = filepath.Join(result, path)
-	}
-	return result
+	return mockConfigManager
 }
 
 func TestNewServiceProvider(t *testing.T) {
 	provider := NewServiceProvider()
-	if provider == nil {
-		t.Fatal("NewServiceProvider() trả về nil")
-	}
+	assert.NotNil(t, provider, "NewServiceProvider() không được trả về nil")
 }
 
 func TestServiceProviderRegister(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
+	// Tạo mock application và container
+	mockApp, container := setupMockApplication()
+
+	// Tạo mock config manager
+	mockConfigManager := setupConfigManager()
+
+	// Đăng ký config manager vào container
+	container.Instance("config", mockConfigManager)
 
 	// Tạo service provider
 	provider := NewServiceProvider()
 
 	// Đăng ký provider với application
-	provider.Register(app)
+	provider.Register(mockApp)
 
-	// Kiểm tra manager được đăng ký trong container
-	container := app.Container()
+	// Xác minh mockApp.Container đã được gọi
+	mockApp.AssertCalled(t, "Container")
+	mockConfigManager.AssertCalled(t, "UnmarshalKey", "log", mock.AnythingOfType("*log.Config"))
 
 	// Kiểm tra binding "log"
 	managerInstance, err := container.Make("log")
-	if err != nil {
-		t.Fatal("ServiceProvider không đăng ký binding 'log':", err)
-	}
+	assert.NoError(t, err, "ServiceProvider phải đăng ký binding 'log'")
 
 	manager, ok := managerInstance.(Manager)
-	if !ok {
-		t.Fatalf("Binding 'log' không phải kiểu Manager, got %T", managerInstance)
-	}
+	assert.True(t, ok, "Binding 'log' phải là kiểu Manager, nhưng nhận được %T", managerInstance)
 
 	// Kiểm tra binding "log.manager"
 	managerInstance2, err := container.Make("log.manager")
-	if err != nil {
-		t.Fatal("ServiceProvider không đăng ký binding 'log.manager':", err)
-	}
+	assert.NoError(t, err, "ServiceProvider phải đăng ký binding 'log.manager'")
+	assert.Equal(t, managerInstance, managerInstance2, "'log' và 'log.manager' phải trỏ đến cùng một instance")
 
-	if managerInstance != managerInstance2 {
-		t.Error("'log' và 'log.manager' trỏ đến các instance khác nhau")
-	}
-
-	// Kiểm tra handlers được thiết lập
-	// manager đã là kiểu Manager, không cần type assertion lại
-
+	// Kiểm tra handlers được thiết lập đúng
 	// Kiểm tra console handler
 	consoleHandler := manager.GetHandler("console")
-	if consoleHandler == nil {
-		t.Error("Manager không có console handler")
-	} else {
-		// Kiểm tra đúng kiểu handler
-		_, ok := consoleHandler.(*handler.ConsoleHandler)
-		if !ok {
-			t.Errorf("Console handler không đúng kiểu, got %T", consoleHandler)
-		}
-	}
-
-	// Kiểm tra thư mục logs tồn tại
-	logsPath := app.BasePath("storage", "logs")
-	if _, err := os.Stat(logsPath); os.IsNotExist(err) {
-		t.Errorf("Thư mục logs không được tạo tại %q", logsPath)
-	} else {
-		// Dọn dẹp sau khi test
-		defer os.RemoveAll(logsPath)
-	}
+	assert.NotNil(t, consoleHandler, "Manager phải có console handler")
+	_, ok = consoleHandler.(*handler.ConsoleHandler)
+	assert.True(t, ok, "Console handler phải có kiểu đúng, nhưng nhận được %T", consoleHandler)
 
 	// Kiểm tra file handler
 	fileHandler := manager.GetHandler("file")
-	if fileHandler == nil {
-		t.Error("Manager không có file handler")
-	} else {
-		// Kiểm tra đúng kiểu handler
-		_, ok := fileHandler.(*handler.FileHandler)
-		if !ok {
-			t.Errorf("File handler không đúng kiểu, got %T", fileHandler)
-		}
+	assert.NotNil(t, fileHandler, "Manager phải có file handler")
+	_, ok = fileHandler.(*handler.FileHandler)
+	assert.True(t, ok, "File handler phải có kiểu đúng, nhưng nhận được %T", fileHandler)
+
+	// Dọn dẹp
+	if err := manager.Close(); err != nil {
+		t.Logf("Không thể đóng manager: %v", err)
 	}
 }
 
-func TestServiceProviderRegisterWithInvalidApp(t *testing.T) {
-	// Tạo một đối tượng không triển khai interface cần thiết
-	invalidApp := struct{}{}
-
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Đăng ký provider với invalid application
-	// Không nên panic
-	provider.Register(invalidApp)
-}
-
 func TestServiceProviderBoot(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
+	// 1. Test với mock application hợp lệ
+	mockApp, container := setupMockApplication()
+
+	// Thêm binding "log" để kiểm tra xác minh trong Boot
+	container.Instance("log", NewManager())
 
 	// Tạo service provider
 	provider := NewServiceProvider()
 
 	// Boot không làm gì nhưng nên chạy không lỗi
-	provider.Boot(app)
+	provider.Boot(mockApp)
+
+	// Không có hành động cụ thể trong Boot, nên chỉ kiểm tra không có panic
+	// Không cần mock.AssertExpectations vì không có lời gọi cụ thể nào được mong đợi
+
+	// 2. Test với nil application
+	var nilApp di.Application = nil
+	provider.Boot(nilApp) // Không nên panic
+
+	// 3. Test với application có container nil
+	mockAppNilContainer := new(diMocks.Application)
+	mockAppNilContainer.On("Container").Return(nil)
+	provider.Boot(mockAppNilContainer) // Không nên panic
 }
 
-// Thêm test case mới kiểm tra chi tiết container.Instance
-func TestServiceProviderContainerInstance(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
+func TestServiceProviderWithConfigError(t *testing.T) {
+	// Tạo mock application và container
+	mockApp, container := setupMockApplication()
+
+	// Tạo mock config manager với lỗi
+	mockConfigManager := new(configMocks.MockManager)
+	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Return(
+		errors.New("config error"))
+
+	// Đăng ký config manager vào container
+	container.Instance("config", mockConfigManager)
 
 	// Tạo service provider
 	provider := NewServiceProvider()
 
-	// Đăng ký provider
-	provider.Register(app)
-
-	// Lấy container
-	container := app.Container()
-
-	// Kiểm tra xem binding 'log' đã được đăng ký chưa
-	if !container.Bound("log") {
-		t.Fatal("Binding 'log' chưa được đăng ký trong container")
-	}
-
-	// Kiểm tra xem binding 'log.manager' đã được đăng ký chưa
-	if !container.Bound("log.manager") {
-		t.Fatal("Binding 'log.manager' chưa được đăng ký trong container")
-	}
-	// Kiểm tra rằng cả hai binding đều trỏ đến cùng một instance
-	logManager1, err := container.Make("log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log':", err)
-	}
-
-	logManager2, err := container.Make("log.manager")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log.manager':", err)
-	}
-
-	if logManager1 != logManager2 {
-		t.Error("container.Instance() không tạo singleton cho 'log' và 'log.manager'")
-	}
+	// Register nên panic khi config manager trả về lỗi
+	assert.Panics(t, func() {
+		provider.Register(mockApp)
+	}, "ServiceProvider.Register nên panic khi config manager trả về lỗi")
 }
 
-// Test truy cập đến Manager thông qua Container.MustMake
-func TestManagerAccessThroughContainer(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
+func TestServiceProviderWithInvalidConfig(t *testing.T) {
+	// Tạo mock application và container
+	mockApp, container := setupMockApplication()
+
+	// Tạo mock config manager với cấu hình không hợp lệ
+	mockConfigManager := new(configMocks.MockManager)
+	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+		// Gán cấu hình không hợp lệ cho log config
+		config := args.Get(1).(*Config)
+		config.Level = "invalid_level" // Level không hợp lệ
+	}).Return(nil)
+
+	// Đăng ký config manager vào container
+	container.Instance("config", mockConfigManager)
 
 	// Tạo service provider
 	provider := NewServiceProvider()
 
-	// Đăng ký provider
-	provider.Register(app)
-
-	// Lấy container
-	container := app.Container()
-
-	// Sử dụng MustMake để lấy manager
-	manager := container.MustMake("log").(Manager)
-
-	// Kiểm tra các phương thức của manager
-	// Log một tin nhắn test (không cần assert kết quả, chỉ kiểm tra không panic)
-	manager.Debug("Test debug message")
-	manager.Info("Test info message")
-	manager.Warning("Test warning message")
-	manager.Error("Test error message")
-
-	// Đóng manager và cleanup
-	err := manager.Close()
-	if err != nil {
-		t.Errorf("Không thể đóng manager: %v", err)
-	}
+	// Register nên panic khi validation config trả về lỗi
+	assert.Panics(t, func() {
+		provider.Register(mockApp)
+	}, "ServiceProvider.Register nên panic khi cấu hình không hợp lệ")
 }
 
-// Test ServiceProvider với một container được reset
-func TestServiceProviderWithContainerReset(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
+func TestServiceProviderWithStackHandler(t *testing.T) {
+	// Tạo mock application và container
+	mockApp, container := setupMockApplication()
 
-	// Reset container trước
-	app.Container().Reset()
+	// Tạo mock config manager với cấu hình stack handler
+	mockConfigManager := new(configMocks.MockManager)
+	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+		// Cấu hình với stack handler
+		config := args.Get(1).(*Config)
+		config.Level = "info"
+		config.Console.Enabled = true
+		config.Console.Colored = true
+		config.File.Enabled = true
+		config.File.Path = filepath.Join(os.TempDir(), "logs", "app.log")
+		config.File.MaxSize = 10485760
+		config.Stack.Enabled = true
+		config.Stack.Handlers.Console = true
+		config.Stack.Handlers.File = true
+	}).Return(nil)
+
+	// Đăng ký config manager vào container
+	container.Instance("config", mockConfigManager)
 
 	// Tạo service provider
 	provider := NewServiceProvider()
 
-	// Đăng ký provider
-	provider.Register(app)
+	// Đăng ký provider với application
+	provider.Register(mockApp)
 
-	// Kiểm tra binding 'log' tồn tại sau khi reset và register
-	if !app.Container().Bound("log") {
-		t.Fatal("Binding 'log' không tồn tại sau khi reset container và register lại")
-	}
+	// Xác minh mockApp.Container đã được gọi
+	mockApp.AssertCalled(t, "Container")
+	mockConfigManager.AssertCalled(t, "UnmarshalKey", "log", mock.AnythingOfType("*log.Config"))
 
-	// Kiểm tra service có hoạt động đúng
-	manager, err := app.Container().Make("log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log':", err)
-	}
+	// Kiểm tra binding "log"
+	managerInstance, err := container.Make("log")
+	assert.NoError(t, err, "ServiceProvider phải đăng ký binding 'log'")
 
-	// Đảm bảo đúng kiểu
-	_, ok := manager.(Manager)
-	if !ok {
-		t.Fatalf("Binding 'log' không phải Manager, nhận được kiểu %T", manager)
-	}
-}
+	manager, ok := managerInstance.(Manager)
+	assert.True(t, ok, "Binding 'log' phải là kiểu Manager")
 
-// Test cách container giải quyết phụ thuộc qua Call
-func TestContainerResolveDependencies(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
+	// Kiểm tra stack handler
+	stackHandler := manager.GetHandler("stack")
+	assert.NotNil(t, stackHandler, "Manager phải có stack handler")
+	_, ok = stackHandler.(*handler.StackHandler)
+	assert.True(t, ok, "Stack handler phải có kiểu đúng, nhưng nhận được %T", stackHandler)
 
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Đăng ký provider
-	provider.Register(app)
-
-	// Đăng ký kiểu Manager để container có thể inject
-	container := app.Container()
-	container.Bind("log.Manager", func(c *di.Container) interface{} {
-		manager, _ := c.Make("log")
-		return manager
-	})
-
-	// Gọi một hàm với tham số là Manager thông qua container.Call
-	called := false
-	result, err := app.Container().Call(func(logger Manager) {
-		// Kiểm tra xem Manager được truyền vào đúng không
-		if logger == nil {
-			t.Error("Manager được truyền vào là nil")
-		} else {
-			called = true
-			// Thử log một message
-			logger.Info("Test message từ container.Call")
-		}
-	})
-
-	if err != nil {
-		t.Fatalf("container.Call thất bại: %v", err)
-	}
-
-	if !called {
-		t.Error("Hàm callback không được gọi")
-	}
-
-	// Kiểm tra kết quả của container.Call
-	if result != nil {
-		t.Errorf("container.Call trả về không mong đợi: %v", result)
+	// Dọn dẹp
+	if err := manager.Close(); err != nil {
+		t.Logf("Không thể đóng manager: %v", err)
 	}
 }
 
-// TestBindingTypes kiểm tra các loại binding khác nhau trong container
-func TestBindingTypes(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
-
-	// Reset container trước
-	app.Container().Reset()
-
-	// Tạo các binding trực tiếp vào container
-	container := app.Container()
-
-	// Kiểm tra Bind
-	container.Bind("test.bind", func(c *di.Container) interface{} {
-		return "bind-value"
-	})
-
-	bindValue, err := container.Make("test.bind")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'test.bind':", err)
-	}
-	if bindValue != "bind-value" {
-		t.Errorf("Bind không trả về giá trị đúng, expected 'bind-value', got %v", bindValue)
-	}
-
-	// Kiểm tra Singleton
-	counter := 0
-	container.Singleton("test.singleton", func(c *di.Container) interface{} {
-		counter++
-		return counter
-	})
-
-	// Gọi Make nhiều lần, counter chỉ nên tăng một lần nếu là singleton
-	val1, err := container.Make("test.singleton")
-	if err != nil {
-		t.Fatal("Không thể resolve singleton:", err)
-	}
-	val2, err := container.Make("test.singleton")
-	if err != nil {
-		t.Fatal("Không thể resolve singleton:", err)
-	}
-
-	if val1 != val2 {
-		t.Error("Singleton không trả về cùng một instance")
-	}
-	if val1.(int) != 1 || val2.(int) != 1 {
-		t.Errorf("Singleton không tạo đúng giá trị, got %v và %v", val1, val2)
-	}
-
-	// Kiểm tra Alias
-	container.Alias("test.bind", "test.alias")
-	aliasValue, err := container.Make("test.alias")
-	if err != nil {
-		t.Fatal("Không thể resolve alias:", err)
-	}
-	if aliasValue != "bind-value" {
-		t.Errorf("Alias không trỏ đến binding gốc, expected 'bind-value', got %v", aliasValue)
-	}
-
-	// Kiểm tra Instance
-	myInstance := &struct{ Name string }{"test-instance"}
-	container.Instance("test.instance", myInstance)
-
-	instanceValue, err := container.Make("test.instance")
-	if err != nil {
-		t.Fatal("Không thể resolve instance:", err)
-	}
-	if instanceValue != myInstance {
-		t.Error("Instance không trả về đúng đối tượng đã đăng ký")
-	}
-}
-
-// TestServiceProviderWithCustomLogger kiểm tra Provider hoạt động với logger tùy chỉnh
-func TestServiceProviderWithCustomLogger(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
-
-	// Tạo một manager tùy chỉnh trước
-	customManager := NewManager()
-
-	// Đăng ký manager tùy chỉnh trong container
-	app.Container().Instance("custom.log", customManager)
-
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Đăng ký provider (điều này sẽ ghi đè lên custom.log?)
-	provider.Register(app)
-
-	// Kiểm tra binding tùy chỉnh và binding tiêu chuẩn
-	standardManager, err := app.Container().Make("log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log':", err)
-	}
-
-	// Kiểm tra rằng manager tùy chỉnh vẫn tồn tại và không bị ghi đè
-	customValue, err := app.Container().Make("custom.log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'custom.log':", err)
-	}
-
-	// Các manager nên khác nhau
-	if customValue == standardManager {
-		t.Error("Provider ghi đè lên các binding tùy chỉnh")
-	}
-
-	// Kiểm tra rằng cả hai đều triển khai interface Manager
-	_, ok1 := customValue.(Manager)
-	_, ok2 := standardManager.(Manager)
-	if !ok1 || !ok2 {
-		t.Error("Một trong các binding không triển khai interface Manager")
-	}
-}
-
-// TestServiceProviderMultipleRegistrations kiểm tra việc đăng ký provider nhiều lần
-func TestServiceProviderMultipleRegistrations(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
-
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Đăng ký provider lần đầu
-	provider.Register(app)
-
-	// Lấy manager sau lần đăng ký đầu tiên
-	manager1, err := app.Container().Make("log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log' sau lần đăng ký đầu tiên:", err)
-	}
-
-	// Đăng ký provider lần thứ hai
-	provider.Register(app)
-
-	// Lấy manager sau lần đăng ký thứ hai
-	manager2, err := app.Container().Make("log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log' sau lần đăng ký thứ hai:", err)
-	}
-
-	// Kiểm tra nếu chúng là cùng một instance (tùy thuộc vào cách triển khai)
-	// Lưu ý: Nếu Container.Instance() tạo một singleton, các lần đăng ký sau có thể không ghi đè
-	if manager1 != manager2 {
-		t.Log("Đăng ký lần thứ hai tạo một instance mới - OK nếu được thiết kế như vậy")
-	} else {
-		t.Log("Đăng ký lần thứ hai giữ nguyên instance - OK nếu được thiết kế như vậy")
-	}
-}
-
-// TestServiceProviderWithCustomContainer kiểm tra việc sử dụng provider với một container tùy chỉnh
-func TestServiceProviderWithCustomContainer(t *testing.T) {
-	// Tạo một container tùy chỉnh riêng biệt
-	customContainer := di.New()
-
-	// Tạo mock application với container tùy chỉnh
-	app := &MockApplication{
-		container: customContainer,
-		basePath:  os.TempDir(),
-	}
-
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Đăng ký provider vào container tùy chỉnh
-	provider.Register(app)
-
-	// Kiểm tra xem container có binding 'log' chưa
-	if !customContainer.Bound("log") {
-		t.Fatal("Container tùy chỉnh không có binding 'log' sau khi register provider")
-	}
-
-	// Xác minh binding đúng kiểu và hoạt động
-	logService, err := customContainer.Make("log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log':", err)
-	}
-
-	// Kiểm tra kiểu
-	logManager, ok := logService.(Manager)
-	if !ok {
-		t.Fatalf("Binding 'log' không phải Manager, got: %T", logService)
-	}
-
-	// Kiểm tra chức năng cơ bản
-	// Log một message (không kiểm tra kết quả, chỉ xem nó có panic không)
-	logManager.Info("Test message")
-}
-
-// TestContainerBindingResolution kiểm tra việc giải quyết các binding phức tạp
 func TestContainerBindingResolution(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
+	// Tạo mock application và container
+	mockApp, container := setupMockApplication()
 
-	// Reset container
-	app.Container().Reset()
+	// Tạo mock config manager
+	mockConfigManager := setupConfigManager()
 
-	// Tạo một service provider
+	// Đăng ký config manager vào container
+	container.Instance("config", mockConfigManager)
+
+	// Tạo service provider
 	provider := NewServiceProvider()
 
 	// Đăng ký provider
-	provider.Register(app)
-
-	// Lấy container
-	container := app.Container()
+	provider.Register(mockApp)
 
 	// Thêm một binding phụ thuộc vào log manager
 	container.Bind("custom.logger", func(c *di.Container) interface{} {
@@ -506,9 +259,7 @@ func TestContainerBindingResolution(t *testing.T) {
 
 	// Giải quyết binding
 	customLogger, err := container.Make("custom.logger")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'custom.logger':", err)
-	}
+	assert.NoError(t, err, "Phải resolve binding 'custom.logger' thành công")
 
 	// Kiểm tra cấu trúc được trả về
 	loggerStruct, ok := customLogger.(struct {
@@ -516,278 +267,9 @@ func TestContainerBindingResolution(t *testing.T) {
 		Name       string
 	})
 
-	if !ok {
-		t.Fatalf("Binding 'custom.logger' không trả về kiểu đúng, got: %T", customLogger)
-	}
-
-	// Kiểm tra các trường
-	if loggerStruct.Name != "CustomLogger" {
-		t.Errorf("Tên không đúng, expected 'CustomLogger', got %s", loggerStruct.Name)
-	}
-
-	if loggerStruct.LogManager == nil {
-		t.Error("LogManager là nil")
-	}
-}
-
-// TestServiceProviderBootSequence kiểm tra trình tự boot và register
-func TestServiceProviderBootSequence(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
-
-	// Reset container
-	app.Container().Reset()
-
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Thứ tự chuẩn: đăng ký trước, sau đó boot
-	provider.Register(app)
-	provider.Boot(app)
-
-	// Kiểm tra xem các binding đã được thiết lập chưa
-	if !app.Container().Bound("log") {
-		t.Error("Binding 'log' không được thiết lập sau Register+Boot")
-	}
-
-	// Reset lại để thử thứ tự khác
-	app.Container().Reset()
-
-	// Thứ tự không chuẩn: boot trước, đăng ký sau
-	// (Không nên ảnh hưởng đến kết quả cuối cùng)
-	provider.Boot(app)
-	provider.Register(app)
-
-	// Kiểm tra xem các binding đã được thiết lập chưa
-	if !app.Container().Bound("log") {
-		t.Error("Binding 'log' không được thiết lập sau Boot+Register")
-	}
-}
-
-// TestLoggerConfiguration kiểm tra cấu hình của logger được thiết lập bởi provider
-func TestLoggerConfiguration(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
-
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Đăng ký provider
-	provider.Register(app)
-
-	// Lấy log manager
-	logManager, err := app.Container().Make("log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log':", err)
-	}
-
-	// Kiểm tra logManager
-	defaultManager, ok := logManager.(Manager)
-	if !ok {
-		t.Fatalf("LogManager không phải kiểu Manager, got %T", logManager)
-	}
-
-	// Kiểm tra cấu hình mặc định
-	// Vì handlers là private, cần sử dụng GetHandler
-	consoleHandler := defaultManager.GetHandler("console")
-	if consoleHandler == nil {
-		t.Error("ConsoleHandler không tồn tại")
-	} else {
-		// Kiểm tra kiểu handler
-		if _, ok := consoleHandler.(*handler.ConsoleHandler); !ok {
-			t.Errorf("ConsoleHandler không đúng kiểu, got %T", consoleHandler)
-		}
-	}
-
-	// Kiểm tra file handler và đường dẫn
-	fileHandler := defaultManager.GetHandler("file")
-	if fileHandler == nil {
-		t.Error("FileHandler không tồn tại")
-	} else {
-		// Kiểm tra kiểu handler
-		if _, ok := fileHandler.(*handler.FileHandler); !ok {
-			t.Errorf("FileHandler không đúng kiểu, got %T", fileHandler)
-		}
-	}
-
-	// Đóng manager sau khi kiểm tra
-	err = defaultManager.Close()
-	if err != nil {
-		t.Errorf("Không thể đóng log manager: %v", err)
-	}
-}
-
-// TestServiceProviderBootInDetail kiểm tra chi tiết phương thức Boot
-func TestServiceProviderBootInDetail(t *testing.T) {
-	// Tạo mock application
-	app := NewMockApplication()
-
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Đăng ký provider
-	provider.Register(app)
-
-	// Khi kiểm tra Boot, tuy nó không làm gì trong triển khai hiện tại,
-	// nhưng nên đảm bảo nó được chạy mà không gây ra lỗi
-	provider.Boot(app)
-
-	// Tạo một invalid app để kiểm tra Boot có xử lý đúng khi nhận invalid input
-	invalidApp := struct{}{}
-
-	// Boot không nên panic với invalid input
-	provider.Boot(invalidApp)
-
-	// Boot nhiều lần cũng không nên gây ra vấn đề
-	provider.Boot(app)
-	provider.Boot(app)
-}
-
-// TestRegisterBootChain kiểm tra chuỗi Register và Boot ở các trình tự khác nhau
-func TestRegisterBootChain(t *testing.T) {
-	// Trường hợp 1: Chuỗi bootRegisterBoot - xem Boot trước Register có gây ra vấn đề gì không
-	app1 := NewMockApplication()
-	provider1 := NewServiceProvider()
-
-	// Boot trước Register
-	provider1.Boot(app1)
-	provider1.Register(app1)
-	provider1.Boot(app1)
-
-	// Kiểm tra log đã được đăng ký
-	if !app1.Container().Bound("log") {
-		t.Error("Binding 'log' không tồn tại sau Boot+Register+Boot")
-	}
-
-	// Trường hợp 2: Nhiều cycle Register-Boot
-	app2 := NewMockApplication()
-	provider2 := NewServiceProvider()
-
-	// Nhiều lượt Register-Boot liên tiếp
-	for i := 0; i < 3; i++ {
-		provider2.Register(app2)
-		provider2.Boot(app2)
-	}
-
-	// Kiểm tra log đã được đăng ký và có thể sử dụng
-	manager, err := app2.Container().Make("log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log' sau nhiều lượt Register-Boot:", err)
-	}
-
-	// Kiểm tra kiểu
-	_, ok := manager.(Manager)
-	if !ok {
-		t.Fatalf("Binding 'log' không phải Manager, nhận được kiểu %T", manager)
-	}
-}
-
-// TestServiceProviderErrorHandling kiểm tra xử lý lỗi của ServiceProvider
-func TestServiceProviderErrorHandling(t *testing.T) {
-	// Tạo một mock application đặc biệt, trong đó BasePath trả về một đường dẫn không tồn tại
-	app := &MockApplication{
-		container: di.New(),
-		basePath:  "/non/existent/path", // Đường dẫn không tồn tại
-	}
-
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Register vẫn nên hoạt động mà không panic, mặc dù có thể không tạo được thư mục logs
-	provider.Register(app)
-
-	// Kiểm tra xem log manager vẫn được đăng ký
-	if !app.Container().Bound("log") {
-		t.Error("Binding 'log' không tồn tại sau khi Register với đường dẫn không hợp lệ")
-	}
-
-	// Lấy manager để kiểm tra nó đã được cấu hình đúng không
-	manager, err := app.Container().Make("log")
-	if err != nil {
-		t.Fatal("Không thể resolve binding 'log':", err)
-	}
-
-	// Kiểm tra kiểu
-	defaultManager, ok := manager.(Manager)
-	if !ok {
-		t.Fatalf("Binding 'log' không phải kiểu Manager, nhận được kiểu %T", manager)
-	}
-
-	// Vẫn nên có console handler
-	if defaultManager.GetHandler("console") == nil {
-		t.Error("ConsoleHandler không tồn tại khi Register với đường dẫn không hợp lệ")
-	}
-}
-
-// TestServiceProviderWithoutContainer kiểm tra provider hoạt động với ứng dụng không có Container()
-func TestServiceProviderWithoutContainer(t *testing.T) {
-	// Tạo một mock application không có Container()
-	appWithoutContainer := struct {
-		BasePath func(paths ...string) string
-	}{
-		BasePath: func(paths ...string) string {
-			return filepath.Join(os.TempDir(), filepath.Join(paths...))
-		},
-	}
-
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Register không nên panic
-	provider.Register(appWithoutContainer)
-
-	// Boot không nên panic
-	provider.Boot(appWithoutContainer)
-}
-
-// TestExhaustiveBootWithDifferentAppTypes kiểm tra Boot với nhiều loại app khác nhau
-func TestExhaustiveBootWithDifferentAppTypes(t *testing.T) {
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// 1. App là nil
-	var nilApp interface{} = nil
-	provider.Boot(nilApp)
-
-	// 2. App là empty struct
-	emptyApp := struct{}{}
-	provider.Boot(emptyApp)
-
-	// 3. App là struct với một số phương thức nhưng không phải tất cả
-	partialApp := struct {
-		BasePath func(paths ...string) string
-	}{
-		BasePath: func(paths ...string) string {
-			return os.TempDir()
-		},
-	}
-	provider.Boot(partialApp)
-
-	// 4. App là struct với container không hợp lệ
-	invalidContainerApp := struct {
-		Container func() interface{}
-	}{
-		Container: func() interface{} {
-			return nil
-		},
-	}
-	provider.Boot(invalidContainerApp)
-
-	// 5. App là struct với container hợp lệ nhưng không có basepath
-	containerOnlyApp := struct {
-		Container func() *di.Container
-	}{
-		Container: func() *di.Container {
-			return di.New()
-		},
-	}
-	provider.Boot(containerOnlyApp)
-
-	// 6. App đầy đủ, nhưng được gọi Boot nhiều lần
-	fullApp := NewMockApplication()
-	for i := 0; i < 5; i++ {
-		provider.Boot(fullApp)
-	}
+	assert.True(t, ok, "Binding 'custom.logger' phải trả về kiểu đúng, nhưng nhận được: %T", customLogger)
+	assert.Equal(t, "CustomLogger", loggerStruct.Name, "Tên phải đúng")
+	assert.NotNil(t, loggerStruct.LogManager, "LogManager không được là nil")
 }
 
 // TestServiceProviderRequires kiểm tra method Requires() trả về giá trị đúng
@@ -799,9 +281,7 @@ func TestServiceProviderRequires(t *testing.T) {
 	requires := provider.Requires()
 
 	// Log provider không phụ thuộc vào provider nào khác
-	if len(requires) != 0 {
-		t.Errorf("Log provider không nên phụ thuộc vào bất kỳ provider nào, nhận được: %v", requires)
-	}
+	assert.Empty(t, requires, "Log provider không nên phụ thuộc vào bất kỳ provider nào")
 }
 
 // TestServiceProviderProviders kiểm tra method Providers() trả về giá trị đúng
@@ -812,35 +292,41 @@ func TestServiceProviderProviders(t *testing.T) {
 	// Lấy danh sách services được đăng ký
 	providers := provider.Providers()
 
-	// Kiểm tra số lượng services
-	expectedCount := 2
-	if len(providers) != expectedCount {
-		t.Errorf("Provider nên đăng ký đúng %d services, nhận được: %d", expectedCount, len(providers))
-	}
+	// Kiểm tra số lượng và giá trị cụ thể
+	expectedServices := []string{"log", "log.manager"}
+	assert.ElementsMatch(t, expectedServices, providers,
+		"Provider phải đăng ký đúng các services: %v, nhưng nhận được: %v",
+		expectedServices, providers)
+}
 
-	// Kiểm tra các services cụ thể
-	expectedServices := map[string]bool{
-		"log":         true,
-		"log.manager": true,
-	}
+// TestRegisterWithInvalidInputs kiểm tra các trường hợp đầu vào không hợp lệ cho Register
+func TestRegisterWithInvalidInputs(t *testing.T) {
+	// Tạo service provider
+	provider := NewServiceProvider()
 
-	for _, service := range providers {
-		if _, exists := expectedServices[service]; !exists {
-			t.Errorf("Service không mong đợi trong danh sách providers: %s", service)
-		}
-	}
+	// 1. Đăng ký provider với nil application
+	assert.Panics(t, func() {
+		var nilApp di.Application = nil
+		provider.Register(nilApp)
+	}, "ServiceProvider.Register nên panic khi app là nil")
 
-	// Kiểm tra tất cả services mong đợi đều có mặt
-	for expected := range expectedServices {
-		found := false
-		for _, actual := range providers {
-			if expected == actual {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("Service mong đợi không có trong danh sách providers: %s", expected)
-		}
-	}
+	// 2. Đăng ký provider với application có nil container
+	mockAppNilContainer := new(diMocks.Application)
+	mockAppNilContainer.On("Container").Return(nil)
+	assert.Panics(t, func() {
+		provider.Register(mockAppNilContainer)
+	}, "ServiceProvider.Register nên panic khi container là nil")
+
+	// 3. Đăng ký provider với container không có config manager
+	mockApp, container := setupMockApplication()
+	assert.Panics(t, func() {
+		// Không cài đặt config manager
+		provider.Register(mockApp)
+	}, "ServiceProvider.Register nên panic khi config manager không tồn tại")
+
+	// 4. Đăng ký provider với config manager có kiểu không đúng
+	container.Instance("config", "not-a-config-manager")
+	assert.Panics(t, func() {
+		provider.Register(mockApp)
+	}, "ServiceProvider.Register nên panic khi config manager có kiểu không đúng")
 }

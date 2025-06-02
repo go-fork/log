@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"go.fork.vn/config"
 	"go.fork.vn/di"
 	"go.fork.vn/log/handler"
 )
@@ -33,51 +34,97 @@ func NewServiceProvider() di.ServiceProvider {
 // Register đăng ký các dịch vụ logging với container của ứng dụng.
 //
 // Phương thức này:
-//   - Tạo một log manager
-//   - Cấu hình một console handler có màu
-//   - Thiết lập một file handler trong thư mục storage/logs
+//   - Lấy config manager từ container bằng MustMake
+//   - Unmarshal log configuration từ key "log"
+//   - Tạo log manager với các handlers dựa trên configuration
 //   - Đăng ký manager trong container DI
 //
-// Tham số:
-//   - app: interface{} - instance của ứng dụng cung cấp Container() và BasePath()
+// Nếu không có config hoặc config không hợp lệ, sử dụng default configuration.
+// Handlers được tạo dựa trên cấu hình: console, file, và stack handlers.
 //
-// Ứng dụng phải triển khai:
-//   - Container() *di.Container
-//   - BasePath(...string) string
-func (p *ServiceProvider) Register(app interface{}) {
-	// Trích xuất container và đường dẫn cơ sở từ ứng dụng
-	if appWithContainer, ok := app.(interface {
-		Container() *di.Container
-		BasePath(paths ...string) string
-	}); ok {
-		c := appWithContainer.Container()
+// Tham số:
+//   - app: di.Application - instance của ứng dụng cung cấp Container()
+func (p *ServiceProvider) Register(app di.Application) {
+	if app == nil {
+		panic("application cannot be nil")
+	}
 
-		// Tạo một log manager mới
-		manager := NewManager()
+	c := app.Container()
+	if c == nil {
+		panic("container cannot be nil")
+	}
 
-		// Thêm một console handler có màu
-		consoleHandler := handler.NewConsoleHandler(true)
+	// Lấy config manager từ container bằng MustMake
+	configManager, ok := c.MustMake("config").(config.Manager)
+	if !ok {
+		panic("config manager not found or invalid type")
+	}
+
+	// Khởi tạo với default config
+	logConfig := DefaultConfig()
+
+	// Unmarshal log configuration, nếu lỗi thì panic
+	if err := configManager.UnmarshalKey("log", logConfig); err != nil {
+		panic("failed to unmarshal log config: " + err.Error())
+	}
+
+	// Validate configuration, nếu lỗi thì panic
+	if err := logConfig.Validate(); err != nil {
+		panic("invalid log config: " + err.Error())
+	}
+
+	// Tạo log manager mới
+	manager := NewManager()
+
+	// Thêm handlers dựa trên configuration
+	if logConfig.Console.Enabled {
+		consoleHandler := handler.NewConsoleHandler(logConfig.Console.Colored)
 		manager.AddHandler("console", consoleHandler)
+	}
 
-		// Cấu hình đường dẫn lưu trữ cho các file log
-		storagePath := appWithContainer.BasePath("storage", "logs")
-		if _, err := os.Stat(storagePath); os.IsNotExist(err) {
-			// Tạo thư mục logs nếu nó không tồn tại
-			os.MkdirAll(storagePath, 0755)
+	if logConfig.File.Enabled && logConfig.File.Path != "" {
+		// Đảm bảo thư mục log tồn tại
+		logDir := filepath.Dir(logConfig.File.Path)
+
+		// Sử dụng absolute path hoặc current working directory
+		if !filepath.IsAbs(logConfig.File.Path) {
+			// Nếu path là relative, sử dụng working directory
+			workDir, _ := os.Getwd()
+			logConfig.File.Path = filepath.Join(workDir, logConfig.File.Path)
+			logDir = filepath.Dir(logConfig.File.Path)
 		}
 
-		// Thêm một file handler cho việc ghi log liên tục
-		// Lưu ý: maxSize được đặt thành 10 bytes cho mục đích demo
-		// Trong môi trường production, sử dụng giá trị lớn hơn như 10*1024*1024 (10MB)
-		fileHandler, err := handler.NewFileHandler(filepath.Join(storagePath, "app.log"), 10)
+		if _, err := os.Stat(logDir); os.IsNotExist(err) {
+			os.MkdirAll(logDir, 0755)
+		}
+
+		fileHandler, err := handler.NewFileHandler(logConfig.File.Path, logConfig.File.MaxSize)
 		if err == nil {
 			manager.AddHandler("file", fileHandler)
 		}
-
-		// Đăng ký log manager trong container
-		c.Instance("log", manager)         // Dịch vụ logging chung
-		c.Instance("log.manager", manager) // Binding đặc biệt cho manager
 	}
+
+	if logConfig.Stack.Enabled {
+		stackHandler := handler.NewStackHandler()
+
+		// Thêm sub-handlers cho stack
+		if logConfig.Stack.Handlers.Console {
+			consoleHandler := handler.NewConsoleHandler(logConfig.Console.Colored)
+			stackHandler.AddHandler(consoleHandler)
+		}
+
+		if logConfig.Stack.Handlers.File && logConfig.File.Path != "" {
+			fileHandler, err := handler.NewFileHandler(logConfig.File.Path, logConfig.File.MaxSize)
+			if err == nil {
+				stackHandler.AddHandler(fileHandler)
+			}
+		}
+
+		manager.AddHandler("stack", stackHandler)
+	}
+
+	// Đăng ký log manager trong container
+	c.Instance("log", manager) // Dịch vụ logging chung
 }
 
 // Boot thực hiện thiết lập sau đăng ký cho dịch vụ logging.
@@ -86,9 +133,20 @@ func (p *ServiceProvider) Register(app interface{}) {
 // được thực hiện trong quá trình đăng ký.
 //
 // Tham số:
-//   - app: interface{} - instance của ứng dụng
-func (p *ServiceProvider) Boot(app interface{}) {
+//   - app: di.Application - instance của ứng dụng
+func (p *ServiceProvider) Boot(app di.Application) {
 	// Không yêu cầu thiết lập bổ sung sau khi đăng ký
+	if app == nil {
+		// Không thể boot nếu app là nil, nhưng không panic vì đây là phương thức tùy chọn
+		return
+	}
+
+	// Xác minh rằng log service đã được đăng ký thành công
+	// Đây là phương thức tùy chọn, không cần panic nếu không tìm thấy log service
+	container := app.Container()
+	if container != nil && container.Bound("log") {
+		// Log service đã được đăng ký thành công
+	}
 }
 
 // Requires trả về danh sách các provider mà log provider phụ thuộc vào.

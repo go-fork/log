@@ -1,227 +1,287 @@
-# Go-Fork Log Provider
+# Go-Fork Log Package (v0.1.1)
 
-Gói `log` cung cấp hệ thống logging hiện đại, linh hoạt và mở rộng cho ứng dụng Go. Gói này được thiết kế để thread-safe và dễ dàng tích hợp vào các ứng dụng Go hiện đại với khả năng xử lý đa dạng các loại output.
+Package log cung cấp hệ thống logging linh hoạt, dễ mở rộng và thread-safe cho ứng dụng Go-Fork Framework.
 
-## Giới thiệu
+## Tổng quan
 
-Logging là một phần thiết yếu trong phát triển và vận hành ứng dụng. Gói `log` cung cấp một hệ thống logging đơn giản nhưng mạnh mẽ với khả năng phân loại theo mức độ nghiêm trọng và hỗ trợ nhiều handlers khác nhau. Được thiết kế thread-safe, hệ thống này đảm bảo ghi log an toàn trong môi trường concurrent.
+Package này triển khai hệ thống logging với nhiều cấp độ nghiêm trọng, các output handler khác nhau (console, file, v.v.), và interface quản lý tập trung. Nó được thiết kế để thread-safe và quản lý tài nguyên hiệu quả trong các ứng dụng concurrent.
 
-## Tính năng nổi bật
+## Tính năng
 
-- **Đa dạng cấp độ log**: Hỗ trợ các cấp độ từ Debug, Info, Warning, Error đến Fatal.
-- **Output đa dạng**: Hỗ trợ ghi log ra console (có màu) và file, dễ dàng mở rộng với custom handlers.
-- **Thread-safe**: An toàn khi ghi log từ nhiều goroutines cùng lúc.
-- **Hỗ trợ định dạng**: Hỗ trợ chuỗi định dạng kiểu Printf trong các thông điệp log.
-- **Xử lý file linh hoạt**: Tự động xoay vòng file log khi đạt kích thước giới hạn.
-- **Tích hợp DI**: Dễ dàng tích hợp với Dependency Injection container, tương thích đầy đủ với di v0.0.5.
-- **Cấu trúc mở rộng**: Dễ dàng triển khai handler mới cho các output khác.
-- **Truy xuất handler linh hoạt**: Lấy handler đã đăng ký để cấu hình hoặc tùy chỉnh thêm.
-- **Tuân thủ interface ServiceProvider**: Triển khai đầy đủ các methods Requires và Providers cho di v0.0.5.
+- Lọc theo cấp độ log (Debug, Info, Warning, Error, Fatal)
+- Nhiều output handler hoạt động đồng thời
+- Hoạt động thread-safe
+- Hỗ trợ chuỗi định dạng
+- Khả năng mở rộng handler tùy chỉnh
+- Output console có màu
+- Tự động xoay vòng file log
+- Hỗ trợ dependency injection
 
-## Cấu trúc package
+## Cài đặt
 
-```
-log/
-  ├── doc.go                 # Tài liệu tổng quan về package
-  ├── manager.go             # Định nghĩa interface Manager và DefaultManager
-  ├── provider.go            # ServiceProvider tích hợp với DI container
-  └── handler/
-      ├── handler.go         # Định nghĩa interface Handler và cấp độ log
-      ├── console.go         # Console handler (hỗ trợ màu sắc)
-      ├── file.go            # File handler (hỗ trợ xoay vòng)
-      └── stack.go           # Stack handler (ghi log cho nhiều handler)
+```bash
+go get go.fork.vn/log@v0.1.1
 ```
 
-## Cách hoạt động
-
-### Đăng ký Service Provider
-
-Service Provider cho phép tích hợp dễ dàng gói `log` vào ứng dụng sử dụng DI container:
+Hoặc thêm vào file go.mod:
 
 ```go
-// Trong file bootstrap của ứng dụng
-import "go.fork.vn/log"
+require go.fork.vn/log v0.1.1
+```
 
-func bootstrap(app interface{}) {
-    // Đăng ký log provider
-    logProvider := log.NewServiceProvider()
-    logProvider.Register(app)
-    
-    // Boot các providers sau khi tất cả đã đăng ký
-    logProvider.Boot(app)
+## Go-Fork Framework Integration
+
+Log package là **Core Provider** được tự động đăng ký khi khởi tạo ứng dụng Go-Fork. Fork HTTP Framework (package `fork`) cung cấp web context và routing, trong khi Fork Application (package `app`) quản lý dependency injection và lifecycle.
+
+### Khởi tạo cơ bản
+
+```go
+// 1. Khởi tạo ứng dụng Go-Fork (log được tự động đăng ký như Core Provider)
+config := map[string]interface{}{
+    "name": "myapp",
+    "path": "./configs",
+}
+app := app.New(config)
+```
+
+### Cấu hình YAML
+
+Tạo file cấu hình `configs/myapp.yaml`:
+
+```yaml
+log:
+  level: "info"
+  console:
+    enabled: true
+    colored: true
+  file:
+    enabled: true
+    path: "storage/logs/app.log"
+    max_size: 10485760  # 10MB
+  stack:
+    enabled: false
+    handlers:
+      console: true
+      file: true
+```
+
+### Sử dụng trong Controller
+
+```go
+func (c *UserController) Create(ctx *fork.Context) error {
+    logger := ctx.App().Log()
+
+    logger.Info("Creating new user: %s", userData.Email)
+
+    user, err := c.userService.Create(userData)
+    if err != nil {
+        logger.Error("Failed to create user: %v", err)
+        return ctx.JSON(500, map[string]string{"error": "Internal server error"})
+    }
+
+    logger.Info("User created successfully: ID=%d", user.ID)
+    return ctx.JSON(201, user)
 }
 ```
 
-ServiceProvider sẽ tự động:
-1. Tạo một log manager mới
-2. Cấu hình console handler với màu sắc
-3. Cấu hình file handler trong thư mục storage/logs
-4. Đăng ký manager vào container với key "log"
-
-### Sử dụng trực tiếp
-
-Bạn có thể tạo và sử dụng log manager mà không cần thông qua DI container:
+### Sử dụng trong Middleware
 
 ```go
-// Tạo manager mới
-manager := log.NewManager()
+func LoggingMiddleware() fork.MiddlewareFunc {
+    return func(c *fork.Context) error {
+        logger := c.App().Log()
 
-// Thêm console handler có màu
-consoleHandler := handler.NewConsoleHandler(true)
-manager.AddHandler("console", consoleHandler)
+        start := time.Now()
+        err := c.Next()
+        duration := time.Since(start)
 
-// Thêm file handler với kích thước tối đa 10MB
-fileHandler, err := handler.NewFileHandler("app.log", 10*1024*1024)
-if err == nil {
-    manager.AddHandler("file", fileHandler)
+        logger.Info("HTTP %s %s - %d (%v)",
+            c.Request().Method,
+            c.Request().URL.Path,
+            c.Response().StatusCode,
+            duration)
+
+        return err
+    }
+}
+```
+
+## Sử dụng nâng cao trong Go-Fork
+
+### Service Layer với Dependency Injection
+
+```go
+type UserService struct {
+    app app.Application
 }
 
-// Bắt đầu ghi log
-manager.Debug("Khởi động ứng dụng")
-manager.Info("Cấu hình đã được nạp: %v", config)
-manager.Warning("Tài nguyên cao: %d%%", usagePercent)
-manager.Error("Lỗi kết nối: %v", err)
-manager.Fatal("Không thể khởi tạo database")
-```
-
-### Sử dụng các Handlers
-
-#### Console Handler
-
-Handler này ghi log ra terminal với hỗ trợ màu sắc:
-
-```go
-// Tạo console handler với màu sắc
-consoleHandler := handler.NewConsoleHandler(true)
-
-// Không sử dụng màu
-plainConsole := handler.NewConsoleHandler(false)
-
-// Thiết lập cấp độ log tối thiểu (bỏ qua Debug)
-consoleHandler.SetMinLevel(handler.InfoLevel)
-```
-
-#### File Handler
-
-Handler này ghi log ra file với hỗ trợ xoay vòng:
-
-```go
-// Tạo file handler với kích thước tối đa 5MB
-fileHandler, err := handler.NewFileHandler("/path/to/app.log", 5*1024*1024)
-if err != nil {
-    // Xử lý lỗi
-}
-
-// Thiết lập cấp độ log tối thiểu (bỏ qua Debug và Info)
-fileHandler.SetMinLevel(handler.WarningLevel)
-```
-
-#### Stack Handler
-
-Handler này chuyển tiếp log đến nhiều handlers khác:
-
-```go
-// Tạo các handlers riêng lẻ
-consoleHandler := handler.NewConsoleHandler(true)
-fileHandler, _ := handler.NewFileHandler("app.log", 10*1024*1024)
-
-// Tạo stack handler
-stackHandler := handler.NewStackHandler()
-stackHandler.PushHandler(consoleHandler)
-stackHandler.PushHandler(fileHandler)
-
-// Bây giờ chỉ cần thêm stack handler vào manager
-manager.AddHandler("combined", stackHandler)
-```
-
-### Truy xuất và tùy chỉnh Handler
-
-Bạn có thể truy xuất các handler đã đăng ký để thực hiện cấu hình bổ sung hoặc kiểm tra trạng thái:
-
-```go
-// Thêm handler vào manager
-consoleHandler := handler.NewConsoleHandler(true)
-manager.AddHandler("console", consoleHandler)
-
-// Sau đó, truy xuất handler để cấu hình thêm
-if handlerObj := manager.GetHandler("console"); handlerObj != nil {
-    // Chuyển đổi kiểu để truy cập các phương thức đặc thù cho console handler
-    if typedHandler, ok := handlerObj.(*handler.ConsoleHandler); ok {
-        // Thực hiện cấu hình bổ sung...
+func NewUserService(app app.Application) *UserService {
+    return &UserService{
+        app: app,
     }
 }
 
-// Kiểm tra handler có tồn tại không trước khi xóa
-if manager.GetHandler("old-handler") != nil {
-    manager.RemoveHandler("old-handler")
-}
-```
+func (s *UserService) ProcessPayment(userID int, amount float64) error {
+    logger := s.app.Log()
 
-### Lọc theo cấp độ
+    logger.Info("Processing payment for user %d: $%.2f", userID, amount)
 
-Mỗi handler có thể được cấu hình để chỉ xử lý các log từ cấp độ nghiêm trọng nhất định trở lên:
-
-```go
-// Tạo handler
-consoleHandler := handler.NewConsoleHandler(true)
-
-// Chỉ ghi log từ Warning trở lên (Warning, Error, Fatal)
-// Bỏ qua Debug và Info
-consoleHandler.SetMinLevel(handler.WarningLevel)
-```
-
-### Đóng handlers đúng cách
-
-Luôn đóng manager khi không sử dụng để đảm bảo tất cả các handlers được dọn dẹp đúng cách:
-
-```go
-manager := log.NewManager()
-// ... cấu hình và sử dụng manager ...
-
-// Đóng manager khi kết thúc
-defer manager.Close()
-```
-
-### Tạo Custom Handler
-
-Bạn có thể triển khai handler của riêng mình bằng cách tuân thủ interface Handler:
-
-```go
-type MyCustomHandler struct {
-    minLevel handler.Level
-}
-
-func (h *MyCustomHandler) Handle(level handler.Level, message string) {
-    if level < h.minLevel {
-        return
+    // Xử lý logic payment
+    if amount <= 0 {
+        logger.Warning("Invalid payment amount for user %d: $%.2f", userID, amount)
+        return errors.New("invalid amount")
     }
-    // Triển khai xử lý log theo cách của bạn
-}
 
-func (h *MyCustomHandler) SetMinLevel(level handler.Level) {
-    h.minLevel = level
-}
-
-func (h *MyCustomHandler) Close() error {
-    // Dọn dẹp tài nguyên nếu cần
+    logger.Debug("Payment validation passed for user %d", userID)
     return nil
 }
 ```
 
-### Lấy Handler Đã Đăng Ký
-
-Để lấy handler đã đăng ký và thực hiện cấu hình hoặc tùy chỉnh thêm:
+### Cấu hình Log Level động
 
 ```go
-// Giả sử bạn đã đăng ký một handler với tên "file"
-fileHandler := manager.GetHandler("file")
+func (app *Application) SetLogLevel(level string) error {
+    logger := app.Log()
 
-// Thực hiện cấu hình cho handler
-if fileHandler != nil {
-    fileHandler.SetMinLevel(handler.ErrorLevel)
+    switch level {
+    case "debug":
+        logger.SetMinLevel(handler.DebugLevel)
+    case "info":
+        logger.SetMinLevel(handler.InfoLevel)
+    case "warning":
+        logger.SetMinLevel(handler.WarningLevel)
+    case "error":
+        logger.SetMinLevel(handler.ErrorLevel)
+    default:
+        return fmt.Errorf("invalid log level: %s", level)
+    }
+
+    logger.Info("Log level changed to: %s", level)
+    return nil
 }
 ```
 
----
+## Tích hợp với Go-Fork Components
 
-Để biết thêm thông tin chi tiết và API reference, vui lòng xem tài liệu trong file `doc.go` hoặc chạy lệnh `go doc github.com/go-fork/providers/log`.
+### Database Operations
+
+```go
+func (r *UserRepository) Create(user *User) error {
+    logger := r.app.Log()
+
+    logger.Debug("Creating user in database: %+v", user)
+
+    result := r.db.Create(user)
+    if result.Error != nil {
+        logger.Error("Database error creating user: %v", result.Error)
+        return result.Error
+    }
+
+    logger.Info("User created successfully: ID=%d, Email=%s", user.ID, user.Email)
+    return nil
+}
+```
+
+### Queue Jobs
+
+```go
+func (j *EmailJob) Handle(data []byte) error {
+    logger := j.app.Log()
+
+    logger.Info("Processing email job: %s", string(data))
+
+    if err := j.sendEmail(data); err != nil {
+        logger.Error("Failed to send email: %v", err)
+        return err
+    }
+
+    logger.Info("Email sent successfully")
+    return nil
+}
+```
+
+### Scheduled Tasks
+
+```go
+func (t *CleanupTask) Run() error {
+    logger := t.app.Log()
+
+    logger.Info("Starting cleanup task")
+
+    deleted, err := t.cleanOldFiles()
+    if err != nil {
+        logger.Error("Cleanup task failed: %v", err)
+        return err
+    }
+
+    logger.Info("Cleanup completed: %d files deleted", deleted)
+    return nil
+}
+```
+
+## Cấu hình Log Handlers
+
+Log package hỗ trợ 3 loại handler chính được cấu hình qua YAML:
+
+### Console Handler
+Ghi log ra console với hỗ trợ màu sắc:
+
+```yaml
+log:
+  console:
+    enabled: true
+    colored: true
+```
+
+### File Handler
+Ghi log vào file với tự động rotation:
+
+```yaml
+log:
+  file:
+    enabled: true
+    path: "storage/logs/app.log"
+    max_size: 10485760  # 10MB
+```
+
+### Stack Handler
+Kết hợp nhiều handler cùng lúc:
+
+```yaml
+log:
+  stack:
+    enabled: true
+    handlers:
+      console: true
+      file: true
+```
+
+Tất cả handlers được quản lý tự động bởi ServiceProvider và không cần cấu hình thủ công trong code ứng dụng.
+
+## Cấu trúc Package
+
+```
+log/
+├── doc.go           # Tài liệu tổng quan về package
+├── manager.go       # Interface Manager và DefaultManager  
+├── provider.go      # ServiceProvider cho Go-Fork DI
+├── config.go        # Cấu hình handlers từ YAML
+├── configs/         # Sample configuration files
+│   └── app.sample.yaml
+└── handler/         # Các handler implementations
+    ├── handler.go   # Interface Handler và log levels
+    ├── console.go   # Console handler với màu sắc
+    ├── file.go      # File handler với rotation
+    └── stack.go     # Stack handler đa dạng
+```
+
+## Framework Compatibility
+
+Module này được thiết kế đặc biệt cho Go-Fork framework version v0.1.1 trở lên, triển khai đầy đủ interface ServiceProvider với các phương thức Register, Boot, Requires và Providers theo chuẩn Go-Fork dependency injection.
+
+## Xem thêm
+
+- Interface Manager và triển khai DefaultManager cho các thao tác logging chính
+- Package handler để hiểu về các loại output handler  
+- go.fork.vn/config để cấu hình log qua YAML files
+- go.fork.vn/di để hiểu về dependency injection trong Go-Fork

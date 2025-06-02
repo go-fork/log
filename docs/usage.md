@@ -3,7 +3,7 @@
 ## Cài đặt
 
 ```bash
-go get go.fork.vn/log@v0.1.0
+go get go.fork.vn/log@v0.1.1
 ```
 
 ## Sử dụng Cơ bản

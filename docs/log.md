@@ -50,8 +50,8 @@ Tích hợp với DI container thông qua interface `di.ServiceProvider`:
 ```go
 type ServiceProvider struct{}
 
-func (p *ServiceProvider) Register(app interface{}) error
-func (p *ServiceProvider) Boot(app interface{}) error
+func (p *ServiceProvider) Register(app Application) error
+func (p *ServiceProvider) Boot(app Application) error
 func (p *ServiceProvider) Requires() []string
 func (p *ServiceProvider) Providers() []string
 ```

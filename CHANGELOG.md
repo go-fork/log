@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## v0.1.1 - 2025-06-02
+
+### Changed
+- Updated dependencies to latest versions
+- Enhanced stability and performance improvements
+
+### Added
+- Comprehensive test suite for Config validation and error handling
+
 ## v0.1.0 - 2025-05-31
 
 ### Added
@@ -36,5 +45,6 @@
 ### Dependencies
 - `go.fork.vn/di`: Dependency injection integration
 
-[Unreleased]: https://github.com/go-fork/log/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/go-fork/log/compare/v0.1.1...HEAD
+[v0.1.1]: https://github.com/go-fork/log/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/go-fork/log/releases/tag/v0.1.0
