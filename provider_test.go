@@ -8,40 +8,20 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	configMocks "go.fork.vn/config/mocks"
+	"go.fork.vn/config/mocks"
 	"go.fork.vn/di"
 	diMocks "go.fork.vn/di/mocks"
 	"go.fork.vn/log/handler"
 )
 
 // setupMockApplication thiết lập một mock Application với Container đã cấu hình
-func setupMockApplication() (*diMocks.Application, *di.Container) {
+func setupMockApplication(t *testing.T) (*diMocks.MockApplication, di.Container) {
 	container := di.New()
 
-	mockApp := new(diMocks.Application)
-	mockApp.On("Container").Return(container)
-	mockApp.On("BasePath", mock.Anything).Return(filepath.Join(os.TempDir(), "logs"))
+	mockApp := diMocks.NewMockApplication(t)
+	mockApp.On("Container").Return(container).Maybe()
 
 	return mockApp, container
-}
-
-// setupConfigManager thiết lập một mockConfigManager đã cấu hình
-func setupConfigManager() *configMocks.MockManager {
-	mockConfigManager := new(configMocks.MockManager)
-
-	// Cấu hình mockConfigManager để xử lý UnmarshalKey với đúng config
-	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
-		// Gán cấu hình cho log config
-		config := args.Get(1).(*Config)
-		config.Level = "info"
-		config.Console.Enabled = true
-		config.Console.Colored = true
-		config.File.Enabled = true
-		config.File.Path = filepath.Join(os.TempDir(), "logs", "app.log")
-		config.File.MaxSize = 10485760
-	}).Return(nil)
-
-	return mockConfigManager
 }
 
 func TestNewServiceProvider(t *testing.T) {
@@ -51,10 +31,19 @@ func TestNewServiceProvider(t *testing.T) {
 
 func TestServiceProviderRegister(t *testing.T) {
 	// Tạo mock application và container
-	mockApp, container := setupMockApplication()
+	mockApp, container := setupMockApplication(t)
 
 	// Tạo mock config manager
-	mockConfigManager := setupConfigManager()
+	mockConfigManager := mocks.NewMockManager(t)
+	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+		config := args.Get(1).(*Config)
+		config.Level = "info"
+		config.Console.Enabled = true
+		config.Console.Colored = true
+		config.File.Enabled = true
+		config.File.Path = filepath.Join(os.TempDir(), "logs", "app.log")
+		config.File.MaxSize = 10485760
+	}).Return(nil).Once()
 
 	// Đăng ký config manager vào container
 	container.Instance("config", mockConfigManager)
@@ -65,21 +54,12 @@ func TestServiceProviderRegister(t *testing.T) {
 	// Đăng ký provider với application
 	provider.Register(mockApp)
 
-	// Xác minh mockApp.Container đã được gọi
-	mockApp.AssertCalled(t, "Container")
-	mockConfigManager.AssertCalled(t, "UnmarshalKey", "log", mock.AnythingOfType("*log.Config"))
-
 	// Kiểm tra binding "log"
 	managerInstance, err := container.Make("log")
 	assert.NoError(t, err, "ServiceProvider phải đăng ký binding 'log'")
 
 	manager, ok := managerInstance.(Manager)
 	assert.True(t, ok, "Binding 'log' phải là kiểu Manager, nhưng nhận được %T", managerInstance)
-
-	// Kiểm tra binding "log.manager"
-	managerInstance2, err := container.Make("log.manager")
-	assert.NoError(t, err, "ServiceProvider phải đăng ký binding 'log.manager'")
-	assert.Equal(t, managerInstance, managerInstance2, "'log' và 'log.manager' phải trỏ đến cùng một instance")
 
 	// Kiểm tra handlers được thiết lập đúng
 	// Kiểm tra console handler
@@ -101,39 +81,64 @@ func TestServiceProviderRegister(t *testing.T) {
 }
 
 func TestServiceProviderBoot(t *testing.T) {
-	// 1. Test với mock application hợp lệ
-	mockApp, container := setupMockApplication()
+	tests := []struct {
+		name        string
+		setupMocks  func() di.Application
+		expectPanic bool
+	}{
+		{
+			name: "valid application with log binding",
+			setupMocks: func() di.Application {
+				mockApp, container := setupMockApplication(t)
+				container.Instance("log", NewManager())
+				return mockApp
+			},
+			expectPanic: false,
+		},
+		{
+			name: "nil application",
+			setupMocks: func() di.Application {
+				return nil
+			},
+			expectPanic: false,
+		},
+		{
+			name: "application with nil container",
+			setupMocks: func() di.Application {
+				mockApp := diMocks.NewMockApplication(t)
+				mockApp.On("Container").Return(nil).Maybe()
+				return mockApp
+			},
+			expectPanic: false,
+		},
+	}
 
-	// Thêm binding "log" để kiểm tra xác minh trong Boot
-	container.Instance("log", NewManager())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := NewServiceProvider()
+			app := tt.setupMocks()
 
-	// Tạo service provider
-	provider := NewServiceProvider()
-
-	// Boot không làm gì nhưng nên chạy không lỗi
-	provider.Boot(mockApp)
-
-	// Không có hành động cụ thể trong Boot, nên chỉ kiểm tra không có panic
-	// Không cần mock.AssertExpectations vì không có lời gọi cụ thể nào được mong đợi
-
-	// 2. Test với nil application
-	var nilApp di.Application = nil
-	provider.Boot(nilApp) // Không nên panic
-
-	// 3. Test với application có container nil
-	mockAppNilContainer := new(diMocks.Application)
-	mockAppNilContainer.On("Container").Return(nil)
-	provider.Boot(mockAppNilContainer) // Không nên panic
+			if tt.expectPanic {
+				assert.Panics(t, func() {
+					provider.Boot(app)
+				})
+			} else {
+				assert.NotPanics(t, func() {
+					provider.Boot(app)
+				})
+			}
+		})
+	}
 }
 
 func TestServiceProviderWithConfigError(t *testing.T) {
 	// Tạo mock application và container
-	mockApp, container := setupMockApplication()
+	mockApp, container := setupMockApplication(t)
 
 	// Tạo mock config manager với lỗi
-	mockConfigManager := new(configMocks.MockManager)
+	mockConfigManager := mocks.NewMockManager(t)
 	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Return(
-		errors.New("config error"))
+		errors.New("config error")).Once()
 
 	// Đăng ký config manager vào container
 	container.Instance("config", mockConfigManager)
@@ -149,15 +154,15 @@ func TestServiceProviderWithConfigError(t *testing.T) {
 
 func TestServiceProviderWithInvalidConfig(t *testing.T) {
 	// Tạo mock application và container
-	mockApp, container := setupMockApplication()
+	mockApp, container := setupMockApplication(t)
 
 	// Tạo mock config manager với cấu hình không hợp lệ
-	mockConfigManager := new(configMocks.MockManager)
+	mockConfigManager := mocks.NewMockManager(t)
 	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
 		// Gán cấu hình không hợp lệ cho log config
 		config := args.Get(1).(*Config)
 		config.Level = "invalid_level" // Level không hợp lệ
-	}).Return(nil)
+	}).Return(nil).Once()
 
 	// Đăng ký config manager vào container
 	container.Instance("config", mockConfigManager)
@@ -173,10 +178,10 @@ func TestServiceProviderWithInvalidConfig(t *testing.T) {
 
 func TestServiceProviderWithStackHandler(t *testing.T) {
 	// Tạo mock application và container
-	mockApp, container := setupMockApplication()
+	mockApp, container := setupMockApplication(t)
 
 	// Tạo mock config manager với cấu hình stack handler
-	mockConfigManager := new(configMocks.MockManager)
+	mockConfigManager := mocks.NewMockManager(t)
 	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
 		// Cấu hình với stack handler
 		config := args.Get(1).(*Config)
@@ -189,7 +194,7 @@ func TestServiceProviderWithStackHandler(t *testing.T) {
 		config.Stack.Enabled = true
 		config.Stack.Handlers.Console = true
 		config.Stack.Handlers.File = true
-	}).Return(nil)
+	}).Return(nil).Once()
 
 	// Đăng ký config manager vào container
 	container.Instance("config", mockConfigManager)
@@ -199,10 +204,6 @@ func TestServiceProviderWithStackHandler(t *testing.T) {
 
 	// Đăng ký provider với application
 	provider.Register(mockApp)
-
-	// Xác minh mockApp.Container đã được gọi
-	mockApp.AssertCalled(t, "Container")
-	mockConfigManager.AssertCalled(t, "UnmarshalKey", "log", mock.AnythingOfType("*log.Config"))
 
 	// Kiểm tra binding "log"
 	managerInstance, err := container.Make("log")
@@ -225,10 +226,19 @@ func TestServiceProviderWithStackHandler(t *testing.T) {
 
 func TestContainerBindingResolution(t *testing.T) {
 	// Tạo mock application và container
-	mockApp, container := setupMockApplication()
+	mockApp, container := setupMockApplication(t)
 
 	// Tạo mock config manager
-	mockConfigManager := setupConfigManager()
+	mockConfigManager := mocks.NewMockManager(t)
+	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+		config := args.Get(1).(*Config)
+		config.Level = "info"
+		config.Console.Enabled = true
+		config.Console.Colored = true
+		config.File.Enabled = true
+		config.File.Path = filepath.Join(os.TempDir(), "logs", "app.log")
+		config.File.MaxSize = 10485760
+	}).Return(nil).Once()
 
 	// Đăng ký config manager vào container
 	container.Instance("config", mockConfigManager)
@@ -240,7 +250,7 @@ func TestContainerBindingResolution(t *testing.T) {
 	provider.Register(mockApp)
 
 	// Thêm một binding phụ thuộc vào log manager
-	container.Bind("custom.logger", func(c *di.Container) interface{} {
+	container.Bind("custom.logger", func(c di.Container) interface{} {
 		// Lấy log manager từ container
 		manager, err := c.Make("log")
 		if err != nil {
@@ -292,8 +302,8 @@ func TestServiceProviderProviders(t *testing.T) {
 	// Lấy danh sách services được đăng ký
 	providers := provider.Providers()
 
-	// Kiểm tra số lượng và giá trị cụ thể
-	expectedServices := []string{"log", "log.manager"}
+	// Kiểm tra số lượng và giá trị cụ thể - chỉ "log" được đăng ký
+	expectedServices := []string{"log"}
 	assert.ElementsMatch(t, expectedServices, providers,
 		"Provider phải đăng ký đúng các services: %v, nhưng nhận được: %v",
 		expectedServices, providers)
@@ -301,32 +311,350 @@ func TestServiceProviderProviders(t *testing.T) {
 
 // TestRegisterWithInvalidInputs kiểm tra các trường hợp đầu vào không hợp lệ cho Register
 func TestRegisterWithInvalidInputs(t *testing.T) {
-	// Tạo service provider
+	tests := []struct {
+		name        string
+		setupMocks  func() (di.Application, di.Container)
+		expectPanic bool
+		description string
+	}{
+		{
+			name: "nil application",
+			setupMocks: func() (di.Application, di.Container) {
+				return nil, nil
+			},
+			expectPanic: true,
+			description: "ServiceProvider.Register nên panic khi app là nil",
+		},
+		{
+			name: "application with nil container",
+			setupMocks: func() (di.Application, di.Container) {
+				mockApp := diMocks.NewMockApplication(t)
+				mockApp.On("Container").Return(nil).Once()
+				return mockApp, nil
+			},
+			expectPanic: true,
+			description: "ServiceProvider.Register nên panic khi container là nil",
+		},
+		{
+			name: "container without config manager",
+			setupMocks: func() (di.Application, di.Container) {
+				mockApp, container := setupMockApplication(t)
+				return mockApp, container
+			},
+			expectPanic: true,
+			description: "ServiceProvider.Register nên panic khi config manager không tồn tại",
+		},
+		{
+			name: "container with invalid config manager type",
+			setupMocks: func() (di.Application, di.Container) {
+				mockApp, container := setupMockApplication(t)
+				container.Instance("config", "not-a-config-manager")
+				return mockApp, container
+			},
+			expectPanic: true,
+			description: "ServiceProvider.Register nên panic khi config manager có kiểu không đúng",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := NewServiceProvider()
+			app, _ := tt.setupMocks()
+
+			if tt.expectPanic {
+				assert.Panics(t, func() {
+					provider.Register(app)
+				}, tt.description)
+			} else {
+				assert.NotPanics(t, func() {
+					provider.Register(app)
+				}, tt.description)
+			}
+		})
+	}
+}
+
+// BenchmarkNewServiceProvider đo hiệu suất tạo ServiceProvider mới
+func BenchmarkNewServiceProvider(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		provider := NewServiceProvider()
+		_ = provider
+	}
+}
+
+// BenchmarkServiceProviderRegister đo hiệu suất đăng ký ServiceProvider
+func BenchmarkServiceProviderRegister(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		// Setup cho mỗi iteration để tránh mock conflicts
+		container := di.New()
+
+		// Tạo mock application với clean state
+		mockApp := &diMocks.MockApplication{}
+		mockApp.On("Container").Return(container).Once()
+
+		// Tạo mock config manager với clean state
+		mockConfigManager := &mocks.MockManager{}
+		mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+			config := args.Get(1).(*Config)
+			config.Level = "info"
+			config.Console.Enabled = true
+			config.Console.Colored = true
+			config.File.Enabled = true
+			config.File.Path = filepath.Join(os.TempDir(), "logs", "bench.log")
+			config.File.MaxSize = 10485760
+		}).Return(nil).Once()
+
+		container.Instance("config", mockConfigManager)
+		provider := NewServiceProvider()
+		b.StartTimer()
+
+		provider.Register(mockApp)
+
+		// Cleanup để tránh memory leak
+		b.StopTimer()
+		if manager, err := container.Make("log"); err == nil {
+			if logManager, ok := manager.(Manager); ok {
+				logManager.Close()
+			}
+		}
+	}
+}
+
+// BenchmarkServiceProviderRegisterWithStackHandler đo hiệu suất với stack handler
+func BenchmarkServiceProviderRegisterWithStackHandler(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		container := di.New()
+
+		mockApp := &diMocks.MockApplication{}
+		mockApp.On("Container").Return(container).Once()
+
+		mockConfigManager := &mocks.MockManager{}
+		mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+			config := args.Get(1).(*Config)
+			config.Level = "info"
+			config.Console.Enabled = true
+			config.Console.Colored = true
+			config.File.Enabled = true
+			config.File.Path = filepath.Join(os.TempDir(), "logs", "bench_stack.log")
+			config.File.MaxSize = 10485760
+			config.Stack.Enabled = true
+			config.Stack.Handlers.Console = true
+			config.Stack.Handlers.File = true
+		}).Return(nil).Once()
+
+		container.Instance("config", mockConfigManager)
+		provider := NewServiceProvider()
+		b.StartTimer()
+
+		provider.Register(mockApp)
+
+		// Cleanup
+		b.StopTimer()
+		if manager, err := container.Make("log"); err == nil {
+			if logManager, ok := manager.(Manager); ok {
+				logManager.Close()
+			}
+		}
+	}
+}
+
+// BenchmarkServiceProviderBoot đo hiệu suất Boot method
+func BenchmarkServiceProviderBoot(b *testing.B) {
+	// Setup một lần cho Boot benchmark vì Boot không có side effects
+	container := di.New()
+	mockApp := &diMocks.MockApplication{}
+	mockApp.On("Container").Return(container).Maybe()
+	container.Instance("log", NewManager())
+
 	provider := NewServiceProvider()
 
-	// 1. Đăng ký provider với nil application
-	assert.Panics(t, func() {
-		var nilApp di.Application = nil
-		provider.Register(nilApp)
-	}, "ServiceProvider.Register nên panic khi app là nil")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		provider.Boot(mockApp)
+	}
+}
 
-	// 2. Đăng ký provider với application có nil container
-	mockAppNilContainer := new(diMocks.Application)
-	mockAppNilContainer.On("Container").Return(nil)
-	assert.Panics(t, func() {
-		provider.Register(mockAppNilContainer)
-	}, "ServiceProvider.Register nên panic khi container là nil")
+// BenchmarkServiceProviderRequires đo hiệu suất Requires method
+func BenchmarkServiceProviderRequires(b *testing.B) {
+	provider := NewServiceProvider()
 
-	// 3. Đăng ký provider với container không có config manager
-	mockApp, container := setupMockApplication()
-	assert.Panics(t, func() {
-		// Không cài đặt config manager
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = provider.Requires()
+	}
+}
+
+// BenchmarkServiceProviderProviders đo hiệu suất Providers method
+func BenchmarkServiceProviderProviders(b *testing.B) {
+	provider := NewServiceProvider()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = provider.Providers()
+	}
+}
+
+// BenchmarkContainerMakeLog đo hiệu suất resolve log service từ container
+func BenchmarkContainerMakeLog(b *testing.B) {
+	// Setup một lần
+	container := di.New()
+	mockApp := &diMocks.MockApplication{}
+	mockApp.On("Container").Return(container).Once()
+
+	mockConfigManager := &mocks.MockManager{}
+	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+		config := args.Get(1).(*Config)
+		config.Level = "info"
+		config.Console.Enabled = true
+		config.Console.Colored = true
+		config.File.Enabled = true
+		config.File.Path = filepath.Join(os.TempDir(), "logs", "bench_make.log")
+		config.File.MaxSize = 10485760
+	}).Return(nil).Once()
+
+	container.Instance("config", mockConfigManager)
+
+	provider := NewServiceProvider()
+	provider.Register(mockApp)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		manager, err := container.Make("log")
+		if err != nil {
+			b.Fatal("Failed to make log service:", err)
+		}
+		_ = manager
+	}
+
+	// Cleanup after benchmark
+	b.StopTimer()
+	if manager, err := container.Make("log"); err == nil {
+		if logManager, ok := manager.(Manager); ok {
+			logManager.Close()
+		}
+	}
+}
+
+// BenchmarkCompleteServiceProviderWorkflow đo hiệu suất toàn bộ workflow
+func BenchmarkCompleteServiceProviderWorkflow(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		// Setup cho mỗi iteration
+		container := di.New()
+		mockApp := &diMocks.MockApplication{}
+		mockApp.On("Container").Return(container).Times(2) // Register + Boot
+
+		mockConfigManager := &mocks.MockManager{}
+		mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+			config := args.Get(1).(*Config)
+			config.Level = "info"
+			config.Console.Enabled = true
+			config.Console.Colored = true
+			config.File.Enabled = true
+			config.File.Path = filepath.Join(os.TempDir(), "logs", "bench_complete.log")
+			config.File.MaxSize = 10485760
+		}).Return(nil).Once()
+
+		container.Instance("config", mockConfigManager)
+		provider := NewServiceProvider()
+		b.StartTimer()
+
+		// Toàn bộ workflow: Register -> Boot -> Make
 		provider.Register(mockApp)
-	}, "ServiceProvider.Register nên panic khi config manager không tồn tại")
+		provider.Boot(mockApp)
+		manager, err := container.Make("log")
+		if err != nil {
+			b.Fatal("Failed to make log service:", err)
+		}
+		_ = manager
 
-	// 4. Đăng ký provider với config manager có kiểu không đúng
-	container.Instance("config", "not-a-config-manager")
-	assert.Panics(t, func() {
-		provider.Register(mockApp)
-	}, "ServiceProvider.Register nên panic khi config manager có kiểu không đúng")
+		// Cleanup
+		b.StopTimer()
+		if logManager, ok := manager.(Manager); ok {
+			logManager.Close()
+		}
+	}
+}
+
+// BenchmarkParallelServiceProviderRegister đo hiệu suất với concurrent access
+func BenchmarkParallelServiceProviderRegister(b *testing.B) {
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			// Setup cho mỗi goroutine với clean mocks
+			container := di.New()
+			mockApp := &diMocks.MockApplication{}
+			mockApp.On("Container").Return(container).Once()
+
+			mockConfigManager := &mocks.MockManager{}
+			mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+				config := args.Get(1).(*Config)
+				config.Level = "info"
+				config.Console.Enabled = true
+				config.Console.Colored = true
+				config.File.Enabled = true
+				config.File.Path = filepath.Join(os.TempDir(), "logs", "bench_parallel.log")
+				config.File.MaxSize = 10485760
+			}).Return(nil).Once()
+
+			container.Instance("config", mockConfigManager)
+
+			provider := NewServiceProvider()
+			provider.Register(mockApp)
+
+			// Cleanup
+			if manager, err := container.Make("log"); err == nil {
+				if logManager, ok := manager.(Manager); ok {
+					logManager.Close()
+				}
+			}
+		}
+	})
+}
+
+// BenchmarkServiceProviderWithDifferentLogLevels đo hiệu suất với các log level khác nhau
+func BenchmarkServiceProviderWithDifferentLogLevels(b *testing.B) {
+	logLevels := []string{"debug", "info", "warning", "error", "fatal"}
+
+	for _, level := range logLevels {
+		b.Run("Level_"+level, func(b *testing.B) {
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				b.StopTimer()
+				container := di.New()
+				mockApp := &diMocks.MockApplication{}
+				mockApp.On("Container").Return(container).Once()
+
+				mockConfigManager := &mocks.MockManager{}
+				mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
+					config := args.Get(1).(*Config)
+					config.Level = level
+					config.Console.Enabled = true
+					config.Console.Colored = true
+					config.File.Enabled = true
+					config.File.Path = filepath.Join(os.TempDir(), "logs", "bench_"+level+".log")
+					config.File.MaxSize = 10485760
+				}).Return(nil).Once()
+
+				container.Instance("config", mockConfigManager)
+				provider := NewServiceProvider()
+				b.StartTimer()
+
+				provider.Register(mockApp)
+
+				// Cleanup
+				b.StopTimer()
+				if manager, err := container.Make("log"); err == nil {
+					if logManager, ok := manager.(Manager); ok {
+						logManager.Close()
+					}
+				}
+			}
+		})
+	}
 }

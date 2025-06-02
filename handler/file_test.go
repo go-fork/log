@@ -391,7 +391,7 @@ func TestFileHandlerWithNoPermission(t *testing.T) {
 	}
 
 	// Thử ghi thêm để đảm bảo kích hoạt rotate
-	h.Log(InfoLevel, "another large message to ensure rotation happens")
+	_ = h.Log(InfoLevel, "another large message to ensure rotation happens")
 }
 
 // TestNewFileHandlerWithStatError kiểm tra lỗi khi lấy thông tin file
@@ -518,4 +518,76 @@ func TestFileHandlerEdgeCases(t *testing.T) {
 			t.Errorf("Log() với ký tự đặc biệt error = %v", err)
 		}
 	})
+}
+
+// TestNewFileHandlerWithMkdirAllError kiểm tra lỗi khi không thể tạo thư mục
+func TestNewFileHandlerWithMkdirAllError(t *testing.T) {
+	// Bỏ qua trên Windows vì cơ chế quyền khác
+	if os.Getenv("GOOS") == "windows" {
+		t.Skip("Bỏ qua test này trên Windows")
+	}
+
+	// Tạo thư mục tạm thời
+	dir := createTempDir(t)
+	defer os.RemoveAll(dir)
+
+	// Tạo một file thay vì thư mục để gây lỗi cho MkdirAll
+	conflictPath := filepath.Join(dir, "conflict")
+	file, err := os.Create(conflictPath)
+	if err != nil {
+		t.Fatalf("Không thể tạo file conflict: %v", err)
+	}
+	file.Close()
+
+	// Thử tạo log file trong "thư mục" này (thực tế là file)
+	logPath := filepath.Join(conflictPath, "impossible.log")
+
+	h, err := NewFileHandler(logPath, 100)
+	if err == nil {
+		h.Close()
+		t.Error("NewFileHandler() nên trả về lỗi khi không thể tạo thư mục")
+	} else {
+		t.Logf("NewFileHandler() trả về lỗi như mong đợi: %v", err)
+	}
+}
+
+// TestNewFileHandlerWithFileOpenError kiểm tra lỗi khi không thể mở file
+func TestNewFileHandlerWithFileOpenError(t *testing.T) {
+	// Bỏ qua trên Windows vì cơ chế quyền khác
+	if os.Getenv("GOOS") == "windows" {
+		t.Skip("Bỏ qua test này trên Windows")
+	}
+
+	// Tạo thư mục tạm thời
+	dir := createTempDir(t)
+	defer os.RemoveAll(dir)
+
+	// Tạo một thư mục và set quyền chỉ đọc
+	readOnlyDir := filepath.Join(dir, "readonly")
+	if err := os.Mkdir(readOnlyDir, 0755); err != nil {
+		t.Fatalf("Không thể tạo thư mục: %v", err)
+	}
+
+	// Đặt quyền chỉ đọc cho thư mục
+	if err := os.Chmod(readOnlyDir, 0444); err != nil {
+		t.Fatalf("Không thể thay đổi quyền thư mục: %v", err)
+	}
+
+	// Khôi phục quyền sau test
+	defer func() {
+		if err := os.Chmod(readOnlyDir, 0755); err != nil {
+			t.Logf("Không thể khôi phục quyền thư mục: %v", err)
+		}
+	}()
+
+	// Thử tạo file trong thư mục chỉ đọc
+	logPath := filepath.Join(readOnlyDir, "test.log")
+
+	h, err := NewFileHandler(logPath, 100)
+	if err == nil {
+		h.Close()
+		t.Error("NewFileHandler() nên trả về lỗi khi không thể mở file")
+	} else {
+		t.Logf("NewFileHandler() trả về lỗi như mong đợi: %v", err)
+	}
 }

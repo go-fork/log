@@ -89,11 +89,11 @@ func TestConsoleHandlerLog(t *testing.T) {
 	h := &ConsoleHandler{colored: false}
 
 	// Ghi log ở mỗi level
-	h.Log(DebugLevel, "debug message")
-	h.Log(InfoLevel, "info message")
-	h.Log(WarningLevel, "warning message")
-	h.Log(ErrorLevel, "error message")
-	h.Log(FatalLevel, "fatal message")
+	_ = h.Log(DebugLevel, "debug message")
+	_ = h.Log(InfoLevel, "info message")
+	_ = h.Log(WarningLevel, "warning message")
+	_ = h.Log(ErrorLevel, "error message")
+	_ = h.Log(FatalLevel, "fatal message")
 
 	// Đọc đầu ra
 	output, err := capture.read()
@@ -124,11 +124,11 @@ func TestColoredConsoleHandler(t *testing.T) {
 	h := &ConsoleHandler{colored: true}
 
 	// Ghi log ở mỗi level
-	h.Log(DebugLevel, "debug message")
-	h.Log(InfoLevel, "info message")
-	h.Log(WarningLevel, "warning message")
-	h.Log(ErrorLevel, "error message")
-	h.Log(FatalLevel, "fatal message")
+	_ = h.Log(DebugLevel, "debug message")
+	_ = h.Log(InfoLevel, "info message")
+	_ = h.Log(WarningLevel, "warning message")
+	_ = h.Log(ErrorLevel, "error message")
+	_ = h.Log(FatalLevel, "fatal message")
 
 	// Đọc đầu ra
 	output, err := capture.read()
@@ -154,7 +154,7 @@ func TestConsoleHandlerWithArgs(t *testing.T) {
 
 	// Ghi log với tham số định dạng
 	// Lưu ý: phương thức Log không dùng args để định dạng message
-	h.Log(InfoLevel, "formatted message 123")
+	_ = h.Log(InfoLevel, "formatted message 123")
 
 	// Đọc đầu ra
 	output, err := capture.read()

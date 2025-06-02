@@ -321,6 +321,10 @@ func (m *manager) Close() error {
 	// Đóng từng handler, theo dõi lỗi đầu tiên
 	var firstErr error
 	for name, handler := range handlersCopy {
+		// Bỏ qua handler nil
+		if handler == nil {
+			continue
+		}
 		if err := handler.Close(); err != nil && firstErr == nil {
 			firstErr = fmt.Errorf("failed to close handler %s: %w", name, err)
 		}
@@ -360,6 +364,10 @@ func (m *manager) log(level handler.Level, message string, args ...interface{}) 
 
 	// Ghi log entry đến tất cả các handler
 	for name, handler := range handlersCopy {
+		// Bỏ qua handler nil
+		if handler == nil {
+			continue
+		}
 		if err := handler.Log(level, formattedMessage); err != nil {
 			// Xử lý lỗi logging (ghi ra stderr)
 			fmt.Printf("Lỗi khi ghi log đến handler %s: %v\n", name, err)

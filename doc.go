@@ -1,29 +1,42 @@
-// Package log cung cấp hệ thống logging linh hoạt, dễ mở rộng và thread-safe cho ứng dụng Go.
+// Package log cung cấp hệ thống logging linh hoạt, có thể mở rộng và thread-safe
+// cho các ứng dụng Go trong hệ sinh thái Fork Framework.
 //
 // # Tổng quan
 //
-// Package này triển khai hệ thống logging với nhiều cấp độ nghiêm trọng, các output
-// handler khác nhau (console, file, v.v.), và interface quản lý tập trung. Nó được thiết kế
-// để thread-safe và quản lý tài nguyên hiệu quả trong các ứng dụng concurrent.
+// Package này triển khai hệ thống logging toàn diện với nhiều mức độ nghiêm trọng,
+// các handler output khác nhau (console, file, v.v.), và giao diện quản lý tập trung.
+// Được thiết kế để thread-safe và quản lý tài nguyên hiệu quả trong các ứng dụng đồng thời.
 //
 // # Tính năng
 //
-//   - Lọc theo cấp độ log (Debug, Info, Warning, Error, Fatal)
-//   - Nhiều output handler hoạt động đồng thời
-//   - Hoạt động thread-safe
-//   - Hỗ trợ chuỗi định dạng
-//   - Khả năng mở rộng handler tùy chỉnh
-//   - Output console có màu
-//   - Tự động xoay vòng file log
-//   - Hỗ trợ dependency injection
+//   - Lọc log đa cấp (Debug, Info, Warning, Error, Fatal)
+//   - Nhiều handler output đồng thời
+//   - Thao tác thread-safe với tranh chấp lock tối thiểu
+//   - Hỗ trợ định dạng kiểu Printf
+//   - Kiến trúc handler tùy chỉnh có thể mở rộng
+//   - Output console có màu sắc cho development
+//   - Tự động xoay file với kích thước và thời gian trigger
+//   - Tích hợp dependency injection
+//   - Ngăn chặn memory leak với quản lý tài nguyên đúng cách
+//   - Cô lập lỗi handler riêng lẻ
+//   - Quản lý handler runtime và cấu hình lại động
 //
-// # Sử dụng trong Go-Fork Framework
+// # Kiến trúc
 //
-// Log package là Core Provider được tự động đăng ký khi khởi tạo ứng dụng.
+// Package log tuân theo service provider pattern và thiết kế dựa trên interface của Fork Framework:
+//
+//   - Manager: Điều phối logging trung tâm triển khai interface Manager
+//   - Handler: Đích output có thể cắm thêm triển khai interface Handler
+//   - ServiceProvider: Tích hợp DI container cho thiết lập tự động
+//   - Config: Quản lý cấu hình dựa trên YAML/environment
+//
+// # Tích hợp Fork Framework
+//
+// Log package là Core Provider được tự động đăng ký khi khởi tạo ứng dụng Fork.
 // Fork HTTP Framework (package fork) cung cấp web context và routing,
 // trong khi Fork Application (package app) quản lý dependency injection và lifecycle.
 //
-//	// 1. Khởi tạo ứng dụng Go-Fork (log được tự động đăng ký như Core Provider)
+//	// 1. Khởi tạo ứng dụng Go-Fork (log được auto-register như Core Provider)
 //	config := map[string]interface{}{
 //	    "name": "myapp",
 //	    "path": "./configs",
@@ -204,7 +217,7 @@
 // - go.fork.vn/config để cấu hình log qua YAML files
 // - go.fork.vn/di để hiểu về dependency injection trong Go-Fork
 //
-// # Tương thích Go-Fork Framework
+// # Tương thích Fork Framework
 //
 // Module này được thiết kế đặc biệt cho Go-Fork framework version v0.1.1 trở lên,
 // triển khai đầy đủ interface ServiceProvider với các phương thức Register, Boot,

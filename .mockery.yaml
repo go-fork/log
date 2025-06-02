@@ -1,0 +1,20 @@
+with-expecter: true
+resolve-type-alias: false
+disable-version-string: true
+quiet: false
+dir: "mocks"
+outpkg: "mocks"
+issue-845-fix: true
+packages:
+  "go.fork.vn/log":
+    interfaces:
+      Manager:
+        config:
+          filename: "manager.go"
+          mockname: "MockManager"
+  "go.fork.vn/log/handler":
+    interfaces:
+      Handler:
+        config:
+          filename: "handler.go"
+          mockname: "MockHandler"

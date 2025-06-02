@@ -1,52 +1,39 @@
-# Go-Fork Log Package (v0.1.1)
+# Log Package - Fork Framework
 
-Package log cung cấp hệ thống logging linh hoạt, dễ mở rộng và thread-safe cho ứng dụng Go-Fork Framework.
+[![Go Version](https://img.shields.io/badge/go-1.23.9+-blue.svg)](https://golang.org)
+[![Fork Framework](https://img.shields.io/badge/fork-v0.1.2-green.svg)](https://fork.vn)
+[![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
+
+Package log cung cấp hệ thống logging linh hoạt, có thể mở rộng và thread-safe cho các ứng dụng Go trong hệ sinh thái Fork Framework.
 
 ## Tổng quan
 
-Package này triển khai hệ thống logging với nhiều cấp độ nghiêm trọng, các output handler khác nhau (console, file, v.v.), và interface quản lý tập trung. Nó được thiết kế để thread-safe và quản lý tài nguyên hiệu quả trong các ứng dụng concurrent.
+Log package là Core Provider được tự động đăng ký và cấu hình khi khởi tạo ứng dụng Fork Framework. Package này triển khai hệ thống logging toàn diện với nhiều mức độ nghiêm trọng, các handler output khác nhau, và giao diện quản lý tập trung.
 
 ## Tính năng
 
-- Lọc theo cấp độ log (Debug, Info, Warning, Error, Fatal)
-- Nhiều output handler hoạt động đồng thời
-- Hoạt động thread-safe
-- Hỗ trợ chuỗi định dạng
-- Khả năng mở rộng handler tùy chỉnh
-- Output console có màu
-- Tự động xoay vòng file log
-- Hỗ trợ dependency injection
+- ✅ **Tích hợp hoàn toàn với Fork Framework** - Tự động đăng ký như Core Provider
+- ✅ **Lọc log đa cấp** - Debug, Info, Warning, Error, Fatal  
+- ✅ **Nhiều handler output** - Console, File, Stack handlers
+- ✅ **Thread-safe operations** - Thao tác an toàn trong môi trường đồng thời
+- ✅ **Cấu hình YAML** - Quản lý cấu hình qua file YAML
+- ✅ **Dependency Injection** - Tích hợp DI container của Fork
+- ✅ **Auto file rotation** - Tự động xoay file với kích thước và thời gian trigger
+- ✅ **Colored console output** - Hỗ trợ màu sắc cho development
+- ✅ **Printf-style formatting** - Định dạng kiểu Printf
+- ✅ **Memory leak prevention** - Quản lý tài nguyên đúng cách
 
 ## Cài đặt
 
 ```bash
-go get go.fork.vn/log@v0.1.1
+go get go.fork.vn/log@v0.1.2
 ```
 
-Hoặc thêm vào file go.mod:
+## Sử dụng trong Fork Framework
 
-```go
-require go.fork.vn/log v0.1.1
-```
+### 1. Cấu hình trong YAML
 
-## Go-Fork Framework Integration
-
-Log package là **Core Provider** được tự động đăng ký khi khởi tạo ứng dụng Go-Fork. Fork HTTP Framework (package `fork`) cung cấp web context và routing, trong khi Fork Application (package `app`) quản lý dependency injection và lifecycle.
-
-### Khởi tạo cơ bản
-
-```go
-// 1. Khởi tạo ứng dụng Go-Fork (log được tự động đăng ký như Core Provider)
-config := map[string]interface{}{
-    "name": "myapp",
-    "path": "./configs",
-}
-app := app.New(config)
-```
-
-### Cấu hình YAML
-
-Tạo file cấu hình `configs/myapp.yaml`:
+Tạo file `configs/app.yaml`:
 
 ```yaml
 log:
@@ -65,50 +52,74 @@ log:
       file: true
 ```
 
-### Sử dụng trong Controller
+### 2. Khởi tạo Fork Application
+
+```go
+package main
+
+import (
+    "go.fork.vn/app"
+    "go.fork.vn/fork"
+)
+
+func main() {
+    // Log được auto-register như Core Provider
+    config := map[string]interface{}{
+        "name": "myapp",
+        "path": "./configs",
+    }
+    app := app.New(config)
+    
+    // Tạo Fork HTTP server
+    server := fork.New(app)
+    
+    // Log đã sẵn sàng sử dụng trong controllers
+    server.Start(":8080")
+}
+```
+
+### 3. Sử dụng trong Controller
 
 ```go
 func (c *UserController) Create(ctx *fork.Context) error {
     logger := ctx.App().Log()
-
+    
     logger.Info("Creating new user: %s", userData.Email)
-
+    
     user, err := c.userService.Create(userData)
     if err != nil {
         logger.Error("Failed to create user: %v", err)
         return ctx.JSON(500, map[string]string{"error": "Internal server error"})
     }
-
+    
     logger.Info("User created successfully: ID=%d", user.ID)
     return ctx.JSON(201, user)
 }
 ```
 
-### Sử dụng trong Middleware
+### 4. Sử dụng trong Middleware
 
 ```go
 func LoggingMiddleware() fork.MiddlewareFunc {
     return func(c *fork.Context) error {
         logger := c.App().Log()
-
+        
         start := time.Now()
         err := c.Next()
         duration := time.Since(start)
-
+        
         logger.Info("HTTP %s %s - %d (%v)",
             c.Request().Method,
             c.Request().URL.Path,
             c.Response().StatusCode,
             duration)
-
+        
         return err
     }
 }
 ```
 
-## Sử dụng nâng cao trong Go-Fork
-
-### Service Layer với Dependency Injection
+### 5. Sử dụng trong Service Layer
 
 ```go
 type UserService struct {
@@ -116,67 +127,40 @@ type UserService struct {
 }
 
 func NewUserService(app app.Application) *UserService {
-    return &UserService{
-        app: app,
-    }
+    return &UserService{app: app}
 }
 
 func (s *UserService) ProcessPayment(userID int, amount float64) error {
     logger := s.app.Log()
-
+    
     logger.Info("Processing payment for user %d: $%.2f", userID, amount)
-
-    // Xử lý logic payment
+    
     if amount <= 0 {
         logger.Warning("Invalid payment amount for user %d: $%.2f", userID, amount)
         return errors.New("invalid amount")
     }
-
+    
     logger.Debug("Payment validation passed for user %d", userID)
     return nil
 }
 ```
 
-### Cấu hình Log Level động
-
-```go
-func (app *Application) SetLogLevel(level string) error {
-    logger := app.Log()
-
-    switch level {
-    case "debug":
-        logger.SetMinLevel(handler.DebugLevel)
-    case "info":
-        logger.SetMinLevel(handler.InfoLevel)
-    case "warning":
-        logger.SetMinLevel(handler.WarningLevel)
-    case "error":
-        logger.SetMinLevel(handler.ErrorLevel)
-    default:
-        return fmt.Errorf("invalid log level: %s", level)
-    }
-
-    logger.Info("Log level changed to: %s", level)
-    return nil
-}
-```
-
-## Tích hợp với Go-Fork Components
+## Tích hợp với Fork Components
 
 ### Database Operations
 
 ```go
 func (r *UserRepository) Create(user *User) error {
     logger := r.app.Log()
-
+    
     logger.Debug("Creating user in database: %+v", user)
-
+    
     result := r.db.Create(user)
     if result.Error != nil {
         logger.Error("Database error creating user: %v", result.Error)
         return result.Error
     }
-
+    
     logger.Info("User created successfully: ID=%d, Email=%s", user.ID, user.Email)
     return nil
 }
@@ -187,14 +171,14 @@ func (r *UserRepository) Create(user *User) error {
 ```go
 func (j *EmailJob) Handle(data []byte) error {
     logger := j.app.Log()
-
+    
     logger.Info("Processing email job: %s", string(data))
-
+    
     if err := j.sendEmail(data); err != nil {
         logger.Error("Failed to send email: %v", err)
         return err
     }
-
+    
     logger.Info("Email sent successfully")
     return nil
 }
@@ -205,83 +189,77 @@ func (j *EmailJob) Handle(data []byte) error {
 ```go
 func (t *CleanupTask) Run() error {
     logger := t.app.Log()
-
+    
     logger.Info("Starting cleanup task")
-
+    
     deleted, err := t.cleanOldFiles()
     if err != nil {
         logger.Error("Cleanup task failed: %v", err)
         return err
     }
-
+    
     logger.Info("Cleanup completed: %d files deleted", deleted)
     return nil
 }
 ```
 
-## Cấu hình Log Handlers
+## Log Handlers
 
-Log package hỗ trợ 3 loại handler chính được cấu hình qua YAML:
+Log package hỗ trợ 3 loại handler chính:
 
 ### Console Handler
-Ghi log ra console với hỗ trợ màu sắc:
+Ghi log ra console với hỗ trợ màu sắc cho development
 
-```yaml
-log:
-  console:
-    enabled: true
-    colored: true
-```
-
-### File Handler
-Ghi log vào file với tự động rotation:
-
-```yaml
-log:
-  file:
-    enabled: true
-    path: "storage/logs/app.log"
-    max_size: 10485760  # 10MB
-```
+### File Handler  
+Ghi log vào file với tự động rotation khi đạt kích thước tối đa
 
 ### Stack Handler
-Kết hợp nhiều handler cùng lúc:
+Kết hợp nhiều handler cùng lúc để ghi log ra nhiều đích
 
-```yaml
-log:
-  stack:
-    enabled: true
-    handlers:
-      console: true
-      file: true
+## Cấu hình Log Level
+
+Có thể thay đổi log level động từ ứng dụng:
+
+```go
+func (app *Application) SetLogLevel(level string) error {
+    logger := app.Log()
+    
+    switch level {
+    case "debug":
+        logger.SetMinLevel(handler.DEBUG)
+    case "info":
+        logger.SetMinLevel(handler.INFO)
+    case "warning":
+        logger.SetMinLevel(handler.WARNING)
+    case "error":
+        logger.SetMinLevel(handler.ERROR)
+    default:
+        return fmt.Errorf("invalid log level: %s", level)
+    }
+    
+    logger.Info("Log level changed to: %s", level)
+    return nil
+}
 ```
 
-Tất cả handlers được quản lý tự động bởi ServiceProvider và không cần cấu hình thủ công trong code ứng dụng.
+## Tài liệu
 
-## Cấu trúc Package
+- [Hướng dẫn sử dụng chi tiết](docs/usage.md)
+- [Tổng quan kiến trúc](docs/overview.md)
+- [API Documentation](https://pkg.go.dev/go.fork.vn/log)
 
-```
-log/
-├── doc.go           # Tài liệu tổng quan về package
-├── manager.go       # Interface Manager và DefaultManager  
-├── provider.go      # ServiceProvider cho Go-Fork DI
-├── config.go        # Cấu hình handlers từ YAML
-├── configs/         # Sample configuration files
-│   └── app.sample.yaml
-└── handler/         # Các handler implementations
-    ├── handler.go   # Interface Handler và log levels
-    ├── console.go   # Console handler với màu sắc
-    ├── file.go      # File handler với rotation
-    └── stack.go     # Stack handler đa dạng
-```
+## Changelog
 
-## Framework Compatibility
+Xem [CHANGELOG.md](CHANGELOG.md) để biết thông tin về các thay đổi trong từng phiên bản.
 
-Module này được thiết kế đặc biệt cho Go-Fork framework version v0.1.1 trở lên, triển khai đầy đủ interface ServiceProvider với các phương thức Register, Boot, Requires và Providers theo chuẩn Go-Fork dependency injection.
+## License
 
-## Xem thêm
+MIT License. Xem [LICENSE](LICENSE) để biết thêm chi tiết.
 
-- Interface Manager và triển khai DefaultManager cho các thao tác logging chính
-- Package handler để hiểu về các loại output handler  
-- go.fork.vn/config để cấu hình log qua YAML files
-- go.fork.vn/di để hiểu về dependency injection trong Go-Fork
+## Fork Framework
+
+Package này là một phần của [Fork Framework](https://fork.vn) - Modern web framework cho Go.
+
+---
+
+**Lưu ý**: Package này được thiết kế đặc biệt để sử dụng trong Fork Framework và không khuyến khích sử dụng độc lập.

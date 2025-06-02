@@ -95,13 +95,16 @@ func (p *ServiceProvider) Register(app di.Application) {
 		}
 
 		if _, err := os.Stat(logDir); os.IsNotExist(err) {
-			os.MkdirAll(logDir, 0755)
+			if err := os.MkdirAll(logDir, 0755); err != nil {
+				panic("failed to create log directory: " + err.Error())
+			}
 		}
 
 		fileHandler, err := handler.NewFileHandler(logConfig.File.Path, logConfig.File.MaxSize)
-		if err == nil {
-			manager.AddHandler("file", fileHandler)
+		if err != nil {
+			panic("failed to create file handler: " + err.Error())
 		}
+		manager.AddHandler("file", fileHandler)
 	}
 
 	if logConfig.Stack.Enabled {
@@ -115,9 +118,10 @@ func (p *ServiceProvider) Register(app di.Application) {
 
 		if logConfig.Stack.Handlers.File && logConfig.File.Path != "" {
 			fileHandler, err := handler.NewFileHandler(logConfig.File.Path, logConfig.File.MaxSize)
-			if err == nil {
-				stackHandler.AddHandler(fileHandler)
+			if err != nil {
+				panic("failed to create stack file handler: " + err.Error())
 			}
+			stackHandler.AddHandler(fileHandler)
 		}
 
 		manager.AddHandler("stack", stackHandler)
@@ -141,12 +145,6 @@ func (p *ServiceProvider) Boot(app di.Application) {
 		return
 	}
 
-	// Xác minh rằng log service đã được đăng ký thành công
-	// Đây là phương thức tùy chọn, không cần panic nếu không tìm thấy log service
-	container := app.Container()
-	if container != nil && container.Bound("log") {
-		// Log service đã được đăng ký thành công
-	}
 }
 
 // Requires trả về danh sách các provider mà log provider phụ thuộc vào.
@@ -162,12 +160,11 @@ func (p *ServiceProvider) Requires() []string {
 
 // Providers trả về danh sách các service mà log provider đăng ký.
 //
-// Log provider đăng ký log manager vào container với keys:
-// - "log": Dịch vụ logging chung
-// - "log.manager": Binding đặc biệt cho manager
+// Log provider đăng ký log manager vào container với key:
+// - "log": Service logging chính (Manager)
 //
 // Returns:
 //   - []string: Mảng chứa tên của các services được đăng ký
 func (p *ServiceProvider) Providers() []string {
-	return []string{"log", "log.manager"}
+	return []string{"log"}
 }
