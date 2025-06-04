@@ -1,7 +1,7 @@
-# Migration Guide - v0.1.3
+# Migration Guide - v0.1.4
 
 ## Overview
-This guide helps you migrate from the previous version to v0.1.3.
+This guide helps you migrate from the previous version to v0.1.4.
 
 ## Prerequisites
 - Go 1.23 or later
@@ -22,7 +22,7 @@ This guide helps you migrate from the previous version to v0.1.3.
 // Old way (previous version)
 oldFunction(param1, param2)
 
-// New way (v0.1.3)
+// New way (v0.1.4)
 newFunction(param1, param2, newParam)
 ```
 
@@ -63,7 +63,7 @@ new_option: false
 
 ### Step 1: Update Dependencies
 ```bash
-go get go.fork.vn/log@v0.1.3
+go get go.fork.vn/log@v0.1.4
 go mod tidy
 ```
 
@@ -105,7 +105,7 @@ go test ./...
 **Solution**: Cast the value or update variable type
 
 ## Getting Help
-- Check the [documentation](https://pkg.go.dev/go.fork.vn/log@v0.1.3)
+- Check the [documentation](https://pkg.go.dev/go.fork.vn/log@v0.1.4)
 - Search [existing issues](https://github.com/go-fork/log/issues)
 - Create a [new issue](https://github.com/go-fork/log/issues/new) if needed
 

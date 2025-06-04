@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## v0.1.3 - 2025-06-04
+
 ### Added
 - **Project Structure Enhancement**
   - Added `.github/` directory with comprehensive CI/CD workflows
@@ -18,7 +20,7 @@
 
 - **Release Management System**
   - Structured release documentation in `releases/` directory
-  - Release notes, summaries, and migration guides for v0.1.0, v0.1.1, v0.1.2
+  - Release notes, summaries, and migration guides for v0.1.0, v0.1.1, v0.1.2, v0.1.3
   - Template system for future releases in `releases/next/`
   - Automated release archiving and template generation scripts
 
@@ -45,6 +47,15 @@
   - Standardized file structure following Go best practices
   - Improved maintainability with automation scripts
 
+### Technical Details
+- **CI/CD Pipeline**: Automated testing, linting, and release processes
+- **Go Module**: Updated module proxy URLs for go.fork.vn/log
+- **Dependencies**: Focused management of go.fork.vn dependencies
+- **Release Process**: Automated with proper semantic versioning and documentation generation
+
+
+
+### Improved
 - **Test Function Naming Convention Refactoring**
   - Migrated all test functions to Fork Framework naming convention
   - Updated pattern from legacy naming to `Test{TypeName}_{MethodName}[_{Scenario}]`
@@ -63,12 +74,10 @@
   - Ensured proper error handling throughout service provider lifecycle
 
 ### Technical Details
-- **CI/CD Pipeline**: Automated testing, linting, and release processes
-- **Go Module**: Updated module proxy URLs for go.fork.vn/log
 - **Dependencies**: Upgraded to go.fork.vn/config v0.1.3 and go.fork.vn/di v0.1.3
-- **Release Process**: Automated with proper semantic versioning and documentation generation
 - **Test Coverage**: 100% test functions pass with new naming convention
 - **Quality Checks**: Zero issues from `go vet` and `golangci-lint`
+- **Code Quality**: 13 files modified with 147 insertions, 113 deletions
 
 ### Test Function Naming Examples
 - **Before**: `TestValidateConfig()`, `TestNewManager()`, `TestLogMethod()`
@@ -184,6 +193,8 @@
 ### Dependencies
 - `go.fork.vn/di`: Dependency injection integration
 
-[Unreleased]: github.com/go-fork/log/compare/v0.1.1...HEAD
+[Unreleased]: github.com/go-fork/log/compare/v0.1.3...HEAD
+[v0.1.3]: github.com/go-fork/log/compare/v0.1.2...v0.1.3
+[v0.1.2]: github.com/go-fork/log/compare/v0.1.1...v0.1.2
 [v0.1.1]: github.com/go-fork/log/compare/v0.1.0...v0.1.1
 [v0.1.0]: github.com/go-fork/log/releases/tag/v0.1.0
