@@ -41,7 +41,7 @@
 //	    "name": "myapp",
 //	    "path": "./configs",
 //	}
-//	app := app.New(config)
+//	app := core.New(config)
 //
 //	// 2. Tạo file cấu hình configs/myapp.yaml
 //	log:

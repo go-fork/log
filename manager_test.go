@@ -37,7 +37,7 @@ func (m *MockHandler) Close() error {
 	return nil
 }
 
-func TestNewManager(t *testing.T) {
+func TestManager_New(t *testing.T) {
 	m := NewManager()
 	if m == nil {
 		t.Fatal("NewManager() trả về nil")
@@ -59,7 +59,7 @@ func TestNewManager(t *testing.T) {
 	}
 }
 
-func TestManagerAddHandler(t *testing.T) {
+func TestManager_AddHandler(t *testing.T) {
 	m := NewManager().(*manager)
 	h := &MockHandler{}
 
@@ -101,7 +101,7 @@ func TestManagerAddHandler(t *testing.T) {
 	}
 }
 
-func TestManagerRemoveHandler(t *testing.T) {
+func TestManager_RemoveHandler(t *testing.T) {
 	m := NewManager()
 	h := &MockHandler{}
 
@@ -138,7 +138,7 @@ func TestManagerRemoveHandler(t *testing.T) {
 	}
 }
 
-func TestSetMinLevel(t *testing.T) {
+func TestManager_SetMinLevel(t *testing.T) {
 	m := NewManager().(*manager)
 
 	// Kiểm tra mức mặc định
@@ -168,7 +168,7 @@ func TestSetMinLevel(t *testing.T) {
 	}
 }
 
-func TestLogMethods(t *testing.T) {
+func TestManager_LogMethods(t *testing.T) {
 	m := NewManager()
 	h := &MockHandler{}
 
@@ -217,7 +217,7 @@ func TestLogMethods(t *testing.T) {
 	}
 }
 
-func TestManagerClose(t *testing.T) {
+func TestManager_Close(t *testing.T) {
 	m := NewManager()
 	h1 := &MockHandler{}
 	h2 := &MockHandler{}
@@ -247,7 +247,7 @@ func TestManagerClose(t *testing.T) {
 	}
 }
 
-func TestManagerCloseWithError(t *testing.T) {
+func TestManager_Close_WithError(t *testing.T) {
 	m := NewManager()
 	h1 := &MockHandler{}
 	h2 := &MockHandler{ShouldError: true}
@@ -269,7 +269,7 @@ func TestManagerCloseWithError(t *testing.T) {
 	}
 }
 
-func TestLogFilteringByMinLevel(t *testing.T) {
+func TestManager_LogFilteringByMinLevel(t *testing.T) {
 	m := NewManager()
 	h := &MockHandler{}
 
@@ -313,7 +313,7 @@ func TestLogFilteringByMinLevel(t *testing.T) {
 }
 
 // TestLogWithFormatting kiểm tra định dạng thông điệp
-func TestLogWithFormatting(t *testing.T) {
+func TestManager_LogWithFormatting(t *testing.T) {
 	m := NewManager()
 	h := &MockHandler{}
 
@@ -351,7 +351,7 @@ func TestLogWithFormatting(t *testing.T) {
 	}
 }
 
-func TestManagerGetHandler(t *testing.T) {
+func TestManager_GetHandler(t *testing.T) {
 	m := NewManager()
 	h1 := &MockHandler{}
 	h2 := &MockHandler{}
@@ -400,7 +400,7 @@ func TestManagerGetHandler(t *testing.T) {
 	}
 }
 
-func TestLogWithErrorHandler(t *testing.T) {
+func TestManager_LogWithErrorHandler(t *testing.T) {
 	m := NewManager()
 	h := &MockHandler{ShouldError: true}
 
@@ -418,7 +418,7 @@ func TestLogWithErrorHandler(t *testing.T) {
 }
 
 // TestManagerConcurrency kiểm tra tính năng đồng thời
-func TestManagerConcurrency(t *testing.T) {
+func TestManager_Concurrency(t *testing.T) {
 	m := NewManager()
 	h := &MockHandler{}
 	m.AddHandler("test", h)
@@ -469,7 +469,7 @@ func TestManagerConcurrency(t *testing.T) {
 }
 
 // TestManagerWithNilHandler kiểm tra xử lý khi handler là nil
-func TestManagerWithNilHandler(t *testing.T) {
+func TestManager_WithNilHandler(t *testing.T) {
 	m := NewManager()
 
 	// Thêm nil handler - không nên panic
@@ -486,7 +486,7 @@ func TestManagerWithNilHandler(t *testing.T) {
 }
 
 // TestManagerEdgeCases kiểm tra các edge cases
-func TestManagerEdgeCases(t *testing.T) {
+func TestManager_EdgeCases(t *testing.T) {
 	t.Run("Empty handler name", func(t *testing.T) {
 		m := NewManager()
 		h := &MockHandler{}
@@ -559,7 +559,7 @@ func TestManagerEdgeCases(t *testing.T) {
 }
 
 // BenchmarkNewManager đo hiệu suất tạo Manager mới
-func BenchmarkNewManager(b *testing.B) {
+func BenchmarkManager_New(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		manager := NewManager()
@@ -568,7 +568,7 @@ func BenchmarkNewManager(b *testing.B) {
 }
 
 // BenchmarkManagerAddHandler đo hiệu suất thêm handler
-func BenchmarkManagerAddHandler(b *testing.B) {
+func BenchmarkManager_AddHandler(b *testing.B) {
 	manager := NewManager()
 
 	b.ResetTimer()
@@ -586,7 +586,7 @@ func BenchmarkManagerAddHandler(b *testing.B) {
 }
 
 // BenchmarkManagerAddHandlerMultiple đo hiệu suất thêm nhiều handlers
-func BenchmarkManagerAddHandlerMultiple(b *testing.B) {
+func BenchmarkManager_AddHandler_Multiple(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -605,7 +605,7 @@ func BenchmarkManagerAddHandlerMultiple(b *testing.B) {
 }
 
 // BenchmarkManagerRemoveHandler đo hiệu suất xóa handler
-func BenchmarkManagerRemoveHandler(b *testing.B) {
+func BenchmarkManager_RemoveHandler(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -619,7 +619,7 @@ func BenchmarkManagerRemoveHandler(b *testing.B) {
 }
 
 // BenchmarkManagerGetHandler đo hiệu suất lấy handler
-func BenchmarkManagerGetHandler(b *testing.B) {
+func BenchmarkManager_GetHandler(b *testing.B) {
 	manager := NewManager()
 	handler := &MockHandler{}
 	manager.AddHandler("test", handler)
@@ -631,7 +631,7 @@ func BenchmarkManagerGetHandler(b *testing.B) {
 }
 
 // BenchmarkManagerGetHandlerNotFound đo hiệu suất lấy handler không tồn tại
-func BenchmarkManagerGetHandlerNotFound(b *testing.B) {
+func BenchmarkManager_GetHandler_NotFound(b *testing.B) {
 	manager := NewManager()
 
 	b.ResetTimer()
@@ -641,7 +641,7 @@ func BenchmarkManagerGetHandlerNotFound(b *testing.B) {
 }
 
 // BenchmarkManagerSetMinLevel đo hiệu suất đặt mức log tối thiểu
-func BenchmarkManagerSetMinLevel(b *testing.B) {
+func BenchmarkManager_SetMinLevel(b *testing.B) {
 	manager := NewManager()
 
 	b.ResetTimer()
@@ -651,7 +651,7 @@ func BenchmarkManagerSetMinLevel(b *testing.B) {
 }
 
 // BenchmarkManagerDebug đo hiệu suất log Debug
-func BenchmarkManagerDebug(b *testing.B) {
+func BenchmarkManager_Debug(b *testing.B) {
 	manager := NewManager()
 	mockHandler := &MockHandler{}
 	manager.AddHandler("test", mockHandler)
@@ -664,7 +664,7 @@ func BenchmarkManagerDebug(b *testing.B) {
 }
 
 // BenchmarkManagerInfo đo hiệu suất log Info
-func BenchmarkManagerInfo(b *testing.B) {
+func BenchmarkManager_Info(b *testing.B) {
 	manager := NewManager()
 	handler := &MockHandler{}
 	manager.AddHandler("test", handler)
@@ -676,7 +676,7 @@ func BenchmarkManagerInfo(b *testing.B) {
 }
 
 // BenchmarkManagerWarning đo hiệu suất log Warning
-func BenchmarkManagerWarning(b *testing.B) {
+func BenchmarkManager_Warning(b *testing.B) {
 	manager := NewManager()
 	handler := &MockHandler{}
 	manager.AddHandler("test", handler)
@@ -688,7 +688,7 @@ func BenchmarkManagerWarning(b *testing.B) {
 }
 
 // BenchmarkManagerError đo hiệu suất log Error
-func BenchmarkManagerError(b *testing.B) {
+func BenchmarkManager_Error(b *testing.B) {
 	manager := NewManager()
 	handler := &MockHandler{}
 	manager.AddHandler("test", handler)
@@ -700,7 +700,7 @@ func BenchmarkManagerError(b *testing.B) {
 }
 
 // BenchmarkManagerFatal đo hiệu suất log Fatal
-func BenchmarkManagerFatal(b *testing.B) {
+func BenchmarkManager_Fatal(b *testing.B) {
 	manager := NewManager()
 	handler := &MockHandler{}
 	manager.AddHandler("test", handler)
@@ -712,7 +712,7 @@ func BenchmarkManagerFatal(b *testing.B) {
 }
 
 // BenchmarkManagerLogFiltering đo hiệu suất lọc log theo level
-func BenchmarkManagerLogFiltering(b *testing.B) {
+func BenchmarkManager_LogFiltering(b *testing.B) {
 	manager := NewManager()
 	mockHandler := &MockHandler{}
 	manager.AddHandler("test", mockHandler)
@@ -728,7 +728,7 @@ func BenchmarkManagerLogFiltering(b *testing.B) {
 }
 
 // BenchmarkManagerLogWithMultipleHandlers đo hiệu suất log với nhiều handlers
-func BenchmarkManagerLogWithMultipleHandlers(b *testing.B) {
+func BenchmarkManager_LogWithMultipleHandlers(b *testing.B) {
 	manager := NewManager()
 
 	// Thêm 5 handlers
@@ -744,7 +744,7 @@ func BenchmarkManagerLogWithMultipleHandlers(b *testing.B) {
 }
 
 // BenchmarkManagerClose đo hiệu suất đóng manager
-func BenchmarkManagerClose(b *testing.B) {
+func BenchmarkManager_Close(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -760,7 +760,7 @@ func BenchmarkManagerClose(b *testing.B) {
 }
 
 // BenchmarkManagerCloseWithError đo hiệu suất đóng manager với handler lỗi
-func BenchmarkManagerCloseWithError(b *testing.B) {
+func BenchmarkManager_Close_WithError(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -778,7 +778,7 @@ func BenchmarkManagerCloseWithError(b *testing.B) {
 }
 
 // BenchmarkManagerLogComplexMessage đo hiệu suất log với message phức tạp
-func BenchmarkManagerLogComplexMessage(b *testing.B) {
+func BenchmarkManager_LogComplexMessage(b *testing.B) {
 	manager := NewManager()
 	handler := &MockHandler{}
 	manager.AddHandler("test", handler)
@@ -791,7 +791,7 @@ func BenchmarkManagerLogComplexMessage(b *testing.B) {
 }
 
 // BenchmarkManagerConcurrentAddRemove đo hiệu suất concurrent add/remove handlers
-func BenchmarkManagerConcurrentAddRemove(b *testing.B) {
+func BenchmarkManager_ConcurrentAddRemove(b *testing.B) {
 	manager := NewManager()
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -808,7 +808,7 @@ func BenchmarkManagerConcurrentAddRemove(b *testing.B) {
 }
 
 // BenchmarkManagerConcurrentLog đo hiệu suất concurrent logging
-func BenchmarkManagerConcurrentLog(b *testing.B) {
+func BenchmarkManager_ConcurrentLog(b *testing.B) {
 	manager := NewManager()
 	handler := &MockHandler{}
 	manager.AddHandler("test", handler)
@@ -823,7 +823,7 @@ func BenchmarkManagerConcurrentLog(b *testing.B) {
 }
 
 // BenchmarkManagerConcurrentMixed đo hiệu suất mixed concurrent operations
-func BenchmarkManagerConcurrentMixed(b *testing.B) {
+func BenchmarkManager_ConcurrentMixed(b *testing.B) {
 	manager := NewManager()
 
 	b.RunParallel(func(pb *testing.PB) {

@@ -22,7 +22,7 @@ func contains(s, substring string) bool {
 }
 
 // Bổ sung cho TestNewFileHandler với test đường dẫn hợp lệ
-func TestNewFileHandler(t *testing.T) {
+func TestFileHandler_New(t *testing.T) {
 	// Tạo thư mục tạm thời
 	dir := createTempDir(t)
 	defer os.RemoveAll(dir)
@@ -50,7 +50,7 @@ func TestNewFileHandler(t *testing.T) {
 }
 
 // Test với đường dẫn không hợp lệ
-func TestNewFileHandlerWithInvalidPath(t *testing.T) {
+func TestFileHandler_New_WithInvalidPath(t *testing.T) {
 	// Thử tạo handler với đường dẫn không hợp lệ
 	h, err := NewFileHandler("/invalid/path/that/should/not/exist/log.txt", 100)
 	if err == nil {
@@ -59,7 +59,7 @@ func TestNewFileHandlerWithInvalidPath(t *testing.T) {
 	}
 }
 
-func TestFileHandlerLog(t *testing.T) {
+func TestFileHandler_Log(t *testing.T) {
 	// Tạo thư mục tạm thời
 	dir := createTempDir(t)
 	defer os.RemoveAll(dir)
@@ -133,7 +133,7 @@ func TestFileHandlerLog(t *testing.T) {
 	}
 }
 
-func TestFileHandlerClose(t *testing.T) {
+func TestFileHandler_Close(t *testing.T) {
 	// Tạo thư mục tạm thời
 	dir := createTempDir(t)
 	defer os.RemoveAll(dir)
@@ -199,7 +199,7 @@ func TestFileHandlerClose(t *testing.T) {
 	}
 }
 
-func TestFileHandlerRotateManually(t *testing.T) {
+func TestFileHandler_Rotate_Manually(t *testing.T) {
 	// Tạo thư mục tạm thời
 	dir := createTempDir(t)
 	defer os.RemoveAll(dir)
@@ -244,7 +244,7 @@ func TestFileHandlerRotateManually(t *testing.T) {
 }
 
 // TestFileHandlerRotateError kiểm tra các trường hợp lỗi trong quá trình xoay vòng file
-func TestFileHandlerRotateError(t *testing.T) {
+func TestFileHandler_Rotate_Error(t *testing.T) {
 	// Tạo thư mục tạm thời
 	dir := createTempDir(t)
 	defer os.RemoveAll(dir)
@@ -285,7 +285,7 @@ func TestFileHandlerRotateError(t *testing.T) {
 }
 
 // TestFileHandlerNewWithExistingDir kiểm tra khi thư mục đã tồn tại
-func TestFileHandlerNewWithExistingDir(t *testing.T) {
+func TestFileHandler_New_WithExistingDir(t *testing.T) {
 	// Tạo thư mục tạm thời
 	dir := createTempDir(t)
 	defer os.RemoveAll(dir)
@@ -312,7 +312,7 @@ func TestFileHandlerNewWithExistingDir(t *testing.T) {
 }
 
 // TestFileHandlerLogError kiểm tra lỗi khi ghi log
-func TestFileHandlerLogError(t *testing.T) {
+func TestFileHandler_LogError(t *testing.T) {
 	// Tạo thư mục tạm thời
 	dir := createTempDir(t)
 	defer os.RemoveAll(dir)
@@ -343,7 +343,7 @@ func TestFileHandlerLogError(t *testing.T) {
 }
 
 // TestFileHandlerWithNoPermission kiểm tra trường hợp không có quyền truy cập
-func TestFileHandlerWithNoPermission(t *testing.T) {
+func TestFileHandler_WithNoPermission(t *testing.T) {
 	// Bỏ qua trên Windows vì cơ chế quyền khác
 	if os.Getenv("GOOS") == "windows" {
 		t.Skip("Bỏ qua test này trên Windows")
@@ -395,7 +395,7 @@ func TestFileHandlerWithNoPermission(t *testing.T) {
 }
 
 // TestNewFileHandlerWithStatError kiểm tra lỗi khi lấy thông tin file
-func TestNewFileHandlerWithStatError(t *testing.T) {
+func TestFileHandler_New_WithStatError(t *testing.T) {
 	if os.Getenv("GO_TEST_FILEHANDLER_STATERROR") == "1" {
 		// Subprocess test để tạo môi trường lỗi đặc biệt
 		// Ghi chú: trong thực tế, đây là một trường hợp rất khó tái tạo
@@ -420,7 +420,7 @@ func TestNewFileHandlerWithStatError(t *testing.T) {
 }
 
 // TestFileHandlerEdgeCases kiểm tra các trường hợp biên
-func TestFileHandlerEdgeCases(t *testing.T) {
+func TestFileHandler_EdgeCases(t *testing.T) {
 	// Tạo thư mục tạm thời
 	dir := createTempDir(t)
 	defer os.RemoveAll(dir)
@@ -521,7 +521,7 @@ func TestFileHandlerEdgeCases(t *testing.T) {
 }
 
 // TestNewFileHandlerWithMkdirAllError kiểm tra lỗi khi không thể tạo thư mục
-func TestNewFileHandlerWithMkdirAllError(t *testing.T) {
+func TestFileHandler_New_WithMkdirAllError(t *testing.T) {
 	// Bỏ qua trên Windows vì cơ chế quyền khác
 	if os.Getenv("GOOS") == "windows" {
 		t.Skip("Bỏ qua test này trên Windows")
@@ -552,7 +552,7 @@ func TestNewFileHandlerWithMkdirAllError(t *testing.T) {
 }
 
 // TestNewFileHandlerWithFileOpenError kiểm tra lỗi khi không thể mở file
-func TestNewFileHandlerWithFileOpenError(t *testing.T) {
+func TestFileHandler_New_WithFileOpenError(t *testing.T) {
 	// Bỏ qua trên Windows vì cơ chế quyền khác
 	if os.Getenv("GOOS") == "windows" {
 		t.Skip("Bỏ qua test này trên Windows")

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConfigValidate(t *testing.T) {
+func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name        string
 		config      *Config
@@ -158,7 +158,7 @@ func TestConfigValidate(t *testing.T) {
 	}
 }
 
-func TestConfigDefaultConfig(t *testing.T) {
+func TestConfig_DefaultConfig(t *testing.T) {
 	config := DefaultConfig()
 
 	assert.Equal(t, "info", config.Level)
@@ -172,7 +172,7 @@ func TestConfigDefaultConfig(t *testing.T) {
 	assert.False(t, config.Stack.Handlers.File)
 }
 
-func TestConfigErrorWithValue(t *testing.T) {
+func TestConfigError_WithValue(t *testing.T) {
 	err := &ConfigError{
 		Field:   "level",
 		Value:   "unknown",
@@ -183,7 +183,7 @@ func TestConfigErrorWithValue(t *testing.T) {
 	assert.Equal(t, expected, err.Error())
 }
 
-func TestConfigErrorWithoutValue(t *testing.T) {
+func TestConfigError_WithoutValue(t *testing.T) {
 	err := &ConfigError{
 		Field:   "handlers",
 		Message: "at least one handler must be enabled",
@@ -193,7 +193,7 @@ func TestConfigErrorWithoutValue(t *testing.T) {
 	assert.Equal(t, expected, err.Error())
 }
 
-func TestValidateAllLogLevels(t *testing.T) {
+func TestConfig_ValidateAllLogLevels(t *testing.T) {
 	validLevels := []string{"debug", "info", "warning", "error", "fatal"}
 
 	for _, level := range validLevels {
@@ -211,7 +211,7 @@ func TestValidateAllLogLevels(t *testing.T) {
 	}
 }
 
-func TestValidateFileHandlerConfigurations(t *testing.T) {
+func TestConfig_ValidateFileHandlerConfigurations(t *testing.T) {
 	tests := []struct {
 		name        string
 		maxSize     int64
@@ -259,7 +259,7 @@ func TestValidateFileHandlerConfigurations(t *testing.T) {
 }
 
 // BenchmarkDefaultConfig đo hiệu suất tạo cấu hình mặc định
-func BenchmarkDefaultConfig(b *testing.B) {
+func BenchmarkConfig_DefaultConfig(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		config := DefaultConfig()
@@ -268,7 +268,7 @@ func BenchmarkDefaultConfig(b *testing.B) {
 }
 
 // BenchmarkConfigValidateValid đo hiệu suất validate cấu hình hợp lệ
-func BenchmarkConfigValidateValid(b *testing.B) {
+func BenchmarkConfig_Validate_Valid(b *testing.B) {
 	config := DefaultConfig()
 
 	b.ResetTimer()
@@ -279,7 +279,7 @@ func BenchmarkConfigValidateValid(b *testing.B) {
 }
 
 // BenchmarkConfigValidateInvalidLevel đo hiệu suất validate với level không hợp lệ
-func BenchmarkConfigValidateInvalidLevel(b *testing.B) {
+func BenchmarkConfig_Validate_InvalidLevel(b *testing.B) {
 	config := &Config{
 		Level: "invalid_level",
 		Console: ConsoleConfig{
@@ -295,7 +295,7 @@ func BenchmarkConfigValidateInvalidLevel(b *testing.B) {
 }
 
 // BenchmarkConfigValidateNoHandlers đo hiệu suất validate khi không có handler
-func BenchmarkConfigValidateNoHandlers(b *testing.B) {
+func BenchmarkConfig_Validate_NoHandlers(b *testing.B) {
 	config := &Config{
 		Level: "info",
 		Console: ConsoleConfig{
@@ -317,7 +317,7 @@ func BenchmarkConfigValidateNoHandlers(b *testing.B) {
 }
 
 // BenchmarkConfigValidateFileHandler đo hiệu suất validate file handler
-func BenchmarkConfigValidateFileHandler(b *testing.B) {
+func BenchmarkConfig_Validate_FileHandler(b *testing.B) {
 	config := &Config{
 		Level: "info",
 		Console: ConsoleConfig{
@@ -341,7 +341,7 @@ func BenchmarkConfigValidateFileHandler(b *testing.B) {
 }
 
 // BenchmarkConfigValidateStackHandler đo hiệu suất validate stack handler
-func BenchmarkConfigValidateStackHandler(b *testing.B) {
+func BenchmarkConfig_Validate_StackHandler(b *testing.B) {
 	config := &Config{
 		Level: "info",
 		Console: ConsoleConfig{
@@ -368,7 +368,7 @@ func BenchmarkConfigValidateStackHandler(b *testing.B) {
 }
 
 // BenchmarkConfigValidateComplexConfig đo hiệu suất validate cấu hình phức tạp
-func BenchmarkConfigValidateComplexConfig(b *testing.B) {
+func BenchmarkConfig_Validate_ComplexConfig(b *testing.B) {
 	config := &Config{
 		Level: "debug",
 		Console: ConsoleConfig{
@@ -397,7 +397,7 @@ func BenchmarkConfigValidateComplexConfig(b *testing.B) {
 }
 
 // BenchmarkConfigErrorCreation đo hiệu suất tạo ConfigError
-func BenchmarkConfigErrorCreation(b *testing.B) {
+func BenchmarkConfigError_Creation(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		err := &ConfigError{
@@ -413,7 +413,7 @@ func BenchmarkConfigErrorCreation(b *testing.B) {
 }
 
 // BenchmarkConfigErrorString đo hiệu suất chuyển ConfigError thành string
-func BenchmarkConfigErrorString(b *testing.B) {
+func BenchmarkConfigError_String(b *testing.B) {
 	err := &ConfigError{
 		Field:   "level",
 		Value:   "invalid",
@@ -428,7 +428,7 @@ func BenchmarkConfigErrorString(b *testing.B) {
 }
 
 // BenchmarkConfigValidateWithDifferentLevels đo hiệu suất validate với các level khác nhau
-func BenchmarkConfigValidateWithDifferentLevels(b *testing.B) {
+func BenchmarkConfig_Validate_WithDifferentLevels(b *testing.B) {
 	levels := []string{"debug", "info", "warning", "error", "fatal"}
 
 	for _, level := range levels {
@@ -456,7 +456,7 @@ func BenchmarkConfigValidateWithDifferentLevels(b *testing.B) {
 }
 
 // BenchmarkConfigValidateParallel đo hiệu suất validate parallel
-func BenchmarkConfigValidateParallel(b *testing.B) {
+func BenchmarkConfig_Validate_Parallel(b *testing.B) {
 	config := DefaultConfig()
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -468,7 +468,7 @@ func BenchmarkConfigValidateParallel(b *testing.B) {
 }
 
 // BenchmarkConfigCreationAndValidation đo hiệu suất tạo và validate config
-func BenchmarkConfigCreationAndValidation(b *testing.B) {
+func BenchmarkConfig_CreationAndValidation(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		config := &Config{
@@ -493,7 +493,7 @@ func BenchmarkConfigCreationAndValidation(b *testing.B) {
 }
 
 // BenchmarkConfigValidateMemoryUsage đo memory usage của validation
-func BenchmarkConfigValidateMemoryUsage(b *testing.B) {
+func BenchmarkConfig_Validate_MemoryUsage(b *testing.B) {
 	b.ReportAllocs()
 
 	config := &Config{
@@ -524,7 +524,7 @@ func BenchmarkConfigValidateMemoryUsage(b *testing.B) {
 }
 
 // BenchmarkConfigValidateWorstCase đo hiệu suất validate worst case scenario
-func BenchmarkConfigValidateWorstCase(b *testing.B) {
+func BenchmarkConfig_Validate_WorstCase(b *testing.B) {
 	// Worst case: invalid config that triggers all validation checks
 	config := &Config{
 		Level: "invalid_level",
@@ -553,7 +553,7 @@ func BenchmarkConfigValidateWorstCase(b *testing.B) {
 }
 
 // BenchmarkConfigValidateFilePathVariations đo hiệu suất với các đường dẫn file khác nhau
-func BenchmarkConfigValidateFilePathVariations(b *testing.B) {
+func BenchmarkConfig_Validate_FilePathVariations(b *testing.B) {
 	paths := []string{
 		"/tmp/logs/short.log",
 		"/very/long/path/to/logs/directory/with/multiple/levels/application.log",
@@ -586,7 +586,7 @@ func BenchmarkConfigValidateFilePathVariations(b *testing.B) {
 }
 
 // BenchmarkConfigValidateMaxSizeVariations đo hiệu suất với các max size khác nhau
-func BenchmarkConfigValidateMaxSizeVariations(b *testing.B) {
+func BenchmarkConfig_Validate_MaxSizeVariations(b *testing.B) {
 	maxSizes := []int64{
 		0,          // Unlimited
 		1024,       // 1KB

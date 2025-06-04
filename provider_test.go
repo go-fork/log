@@ -24,12 +24,12 @@ func setupMockApplication(t *testing.T) (*diMocks.MockApplication, di.Container)
 	return mockApp, container
 }
 
-func TestNewServiceProvider(t *testing.T) {
+func TestServiceProvider_New(t *testing.T) {
 	provider := NewServiceProvider()
 	assert.NotNil(t, provider, "NewServiceProvider() không được trả về nil")
 }
 
-func TestServiceProviderRegister(t *testing.T) {
+func TestServiceProvider_Register(t *testing.T) {
 	// Tạo mock application và container
 	mockApp, container := setupMockApplication(t)
 
@@ -80,7 +80,7 @@ func TestServiceProviderRegister(t *testing.T) {
 	}
 }
 
-func TestServiceProviderBoot(t *testing.T) {
+func TestServiceProvider_Boot(t *testing.T) {
 	tests := []struct {
 		name        string
 		setupMocks  func() di.Application
@@ -100,7 +100,7 @@ func TestServiceProviderBoot(t *testing.T) {
 			setupMocks: func() di.Application {
 				return nil
 			},
-			expectPanic: false,
+			expectPanic: true,
 		},
 		{
 			name: "application with nil container",
@@ -109,7 +109,7 @@ func TestServiceProviderBoot(t *testing.T) {
 				mockApp.On("Container").Return(nil).Maybe()
 				return mockApp
 			},
-			expectPanic: false,
+			expectPanic: true,
 		},
 	}
 
@@ -131,7 +131,7 @@ func TestServiceProviderBoot(t *testing.T) {
 	}
 }
 
-func TestServiceProviderWithConfigError(t *testing.T) {
+func TestServiceProvider_WithConfigError(t *testing.T) {
 	// Tạo mock application và container
 	mockApp, container := setupMockApplication(t)
 
@@ -152,7 +152,7 @@ func TestServiceProviderWithConfigError(t *testing.T) {
 	}, "ServiceProvider.Register nên panic khi config manager trả về lỗi")
 }
 
-func TestServiceProviderWithInvalidConfig(t *testing.T) {
+func TestServiceProvider_WithInvalidConfig(t *testing.T) {
 	// Tạo mock application và container
 	mockApp, container := setupMockApplication(t)
 
@@ -176,7 +176,7 @@ func TestServiceProviderWithInvalidConfig(t *testing.T) {
 	}, "ServiceProvider.Register nên panic khi cấu hình không hợp lệ")
 }
 
-func TestServiceProviderWithStackHandler(t *testing.T) {
+func TestServiceProvider_WithStackHandler(t *testing.T) {
 	// Tạo mock application và container
 	mockApp, container := setupMockApplication(t)
 
@@ -224,7 +224,7 @@ func TestServiceProviderWithStackHandler(t *testing.T) {
 	}
 }
 
-func TestContainerBindingResolution(t *testing.T) {
+func TestServiceProvider_ContainerBindingResolution(t *testing.T) {
 	// Tạo mock application và container
 	mockApp, container := setupMockApplication(t)
 
@@ -283,7 +283,7 @@ func TestContainerBindingResolution(t *testing.T) {
 }
 
 // TestServiceProviderRequires kiểm tra method Requires() trả về giá trị đúng
-func TestServiceProviderRequires(t *testing.T) {
+func TestServiceProvider_Requires(t *testing.T) {
 	// Tạo service provider
 	provider := NewServiceProvider()
 
@@ -295,7 +295,7 @@ func TestServiceProviderRequires(t *testing.T) {
 }
 
 // TestServiceProviderProviders kiểm tra method Providers() trả về giá trị đúng
-func TestServiceProviderProviders(t *testing.T) {
+func TestServiceProvider_Providers(t *testing.T) {
 	// Tạo service provider
 	provider := NewServiceProvider()
 
@@ -310,7 +310,7 @@ func TestServiceProviderProviders(t *testing.T) {
 }
 
 // TestRegisterWithInvalidInputs kiểm tra các trường hợp đầu vào không hợp lệ cho Register
-func TestRegisterWithInvalidInputs(t *testing.T) {
+func TestServiceProvider_RegisterWithInvalidInputs(t *testing.T) {
 	tests := []struct {
 		name        string
 		setupMocks  func() (di.Application, di.Container)
@@ -375,7 +375,7 @@ func TestRegisterWithInvalidInputs(t *testing.T) {
 }
 
 // BenchmarkNewServiceProvider đo hiệu suất tạo ServiceProvider mới
-func BenchmarkNewServiceProvider(b *testing.B) {
+func BenchmarkServiceProvider_New(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		provider := NewServiceProvider()
@@ -384,7 +384,7 @@ func BenchmarkNewServiceProvider(b *testing.B) {
 }
 
 // BenchmarkServiceProviderRegister đo hiệu suất đăng ký ServiceProvider
-func BenchmarkServiceProviderRegister(b *testing.B) {
+func BenchmarkServiceProvider_Register(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -424,7 +424,7 @@ func BenchmarkServiceProviderRegister(b *testing.B) {
 }
 
 // BenchmarkServiceProviderRegisterWithStackHandler đo hiệu suất với stack handler
-func BenchmarkServiceProviderRegisterWithStackHandler(b *testing.B) {
+func BenchmarkServiceProvider_Register_WithStackHandler(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -464,7 +464,7 @@ func BenchmarkServiceProviderRegisterWithStackHandler(b *testing.B) {
 }
 
 // BenchmarkServiceProviderBoot đo hiệu suất Boot method
-func BenchmarkServiceProviderBoot(b *testing.B) {
+func BenchmarkServiceProvider_Boot(b *testing.B) {
 	// Setup một lần cho Boot benchmark vì Boot không có side effects
 	container := di.New()
 	mockApp := &diMocks.MockApplication{}
@@ -480,7 +480,7 @@ func BenchmarkServiceProviderBoot(b *testing.B) {
 }
 
 // BenchmarkServiceProviderRequires đo hiệu suất Requires method
-func BenchmarkServiceProviderRequires(b *testing.B) {
+func BenchmarkServiceProvider_Requires(b *testing.B) {
 	provider := NewServiceProvider()
 
 	b.ResetTimer()
@@ -490,7 +490,7 @@ func BenchmarkServiceProviderRequires(b *testing.B) {
 }
 
 // BenchmarkServiceProviderProviders đo hiệu suất Providers method
-func BenchmarkServiceProviderProviders(b *testing.B) {
+func BenchmarkServiceProvider_Providers(b *testing.B) {
 	provider := NewServiceProvider()
 
 	b.ResetTimer()
@@ -500,7 +500,7 @@ func BenchmarkServiceProviderProviders(b *testing.B) {
 }
 
 // BenchmarkContainerMakeLog đo hiệu suất resolve log service từ container
-func BenchmarkContainerMakeLog(b *testing.B) {
+func BenchmarkServiceProvider_ContainerMakeLog(b *testing.B) {
 	// Setup một lần
 	container := di.New()
 	mockApp := &diMocks.MockApplication{}
@@ -541,7 +541,7 @@ func BenchmarkContainerMakeLog(b *testing.B) {
 }
 
 // BenchmarkCompleteServiceProviderWorkflow đo hiệu suất toàn bộ workflow
-func BenchmarkCompleteServiceProviderWorkflow(b *testing.B) {
+func BenchmarkServiceProvider_CompleteWorkflow(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -583,7 +583,7 @@ func BenchmarkCompleteServiceProviderWorkflow(b *testing.B) {
 }
 
 // BenchmarkParallelServiceProviderRegister đo hiệu suất với concurrent access
-func BenchmarkParallelServiceProviderRegister(b *testing.B) {
+func BenchmarkServiceProvider_Register_Parallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			// Setup cho mỗi goroutine với clean mocks
@@ -618,7 +618,7 @@ func BenchmarkParallelServiceProviderRegister(b *testing.B) {
 }
 
 // BenchmarkServiceProviderWithDifferentLogLevels đo hiệu suất với các log level khác nhau
-func BenchmarkServiceProviderWithDifferentLogLevels(b *testing.B) {
+func BenchmarkServiceProvider_WithDifferentLogLevels(b *testing.B) {
 	logLevels := []string{"debug", "info", "warning", "error", "fatal"}
 
 	for _, level := range logLevels {

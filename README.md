@@ -243,10 +243,10 @@ func (app *Application) SetLogLevel(level string) error {
 ```
 
 ## Tài liệu
-
-- [Hướng dẫn sử dụng chi tiết](docs/usage.md)
+- [Trang thông tin](https://go.fork.vn/)
+- [Tài liệu](docs/index.md)
 - [Tổng quan kiến trúc](docs/overview.md)
-- [API Documentation](https://pkg.go.dev/go.fork.vn/log)
+- [Go Documentation](https://pkg.go.dev/go.fork.vn/log)
 - [Release Notes](releases/) - Chi tiết về từng phiên bản
 
 ## Release Management

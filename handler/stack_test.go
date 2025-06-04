@@ -34,7 +34,7 @@ func (m *MockTestHandler) Close() error {
 	return nil
 }
 
-func TestNewStackHandler(t *testing.T) {
+func TestStackHandler_New(t *testing.T) {
 	// Tạo mock handlers
 	handler1 := &MockTestHandler{}
 	handler2 := &MockTestHandler{}
@@ -70,7 +70,7 @@ func TestNewStackHandler(t *testing.T) {
 	}
 }
 
-func TestStackHandlerLog(t *testing.T) {
+func TestStackHandler_Log(t *testing.T) {
 	// Test với không handler
 	stack1 := NewStackHandler()
 	err := stack1.Log(InfoLevel, "test message")
@@ -118,7 +118,7 @@ func TestStackHandlerLog(t *testing.T) {
 	}
 }
 
-func TestStackHandlerClose(t *testing.T) {
+func TestStackHandler_Close(t *testing.T) {
 	// Test với không handler
 	stack1 := NewStackHandler()
 	err := stack1.Close()
@@ -158,7 +158,7 @@ func TestStackHandlerClose(t *testing.T) {
 	}
 }
 
-func TestStackHandlerAddHandler(t *testing.T) {
+func TestStackHandler_AddHandler(t *testing.T) {
 	// Tạo stack handler ban đầu
 	stack := NewStackHandler()
 

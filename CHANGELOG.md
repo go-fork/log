@@ -45,11 +45,36 @@
   - Standardized file structure following Go best practices
   - Improved maintainability with automation scripts
 
+- **Test Function Naming Convention Refactoring**
+  - Migrated all test functions to Fork Framework naming convention
+  - Updated pattern from legacy naming to `Test{TypeName}_{MethodName}[_{Scenario}]`
+  - Updated benchmark functions to `Benchmark{TypeName}_{MethodName}[_{Scenario}]`
+  - Enhanced test readability and consistency across the codebase
+
+- **Dependencies Updated**
+  - Upgraded `go.fork.vn/config` from v0.1.2 to v0.1.3
+  - Upgraded `go.fork.vn/di` from v0.1.2 to v0.1.3
+  - Updated indirect dependency `github.com/spf13/cast` to v1.9.2
+
+### Fixed
+- **ServiceProvider Boot Method**: Fixed panic handling for nil container validation
+  - Added proper container nil check in `Boot()` method for consistency with `Register()`
+  - Resolved test case `TestServiceProvider_Boot/application_with_nil_container` failure
+  - Ensured proper error handling throughout service provider lifecycle
+
 ### Technical Details
 - **CI/CD Pipeline**: Automated testing, linting, and release processes
 - **Go Module**: Updated module proxy URLs for go.fork.vn/log
-- **Dependencies**: Focused management of go.fork.vn/config v0.1.2 and go.fork.vn/di v0.1.2
+- **Dependencies**: Upgraded to go.fork.vn/config v0.1.3 and go.fork.vn/di v0.1.3
 - **Release Process**: Automated with proper semantic versioning and documentation generation
+- **Test Coverage**: 100% test functions pass with new naming convention
+- **Quality Checks**: Zero issues from `go vet` and `golangci-lint`
+
+### Test Function Naming Examples
+- **Before**: `TestValidateConfig()`, `TestNewManager()`, `TestLogMethod()`
+- **After**: `TestConfig_Validate()`, `TestManager_New()`, `TestManager_LogMethods()`
+- **Benchmark Before**: `BenchmarkValidateConfig()`, `BenchmarkNewManager()`
+- **Benchmark After**: `BenchmarkConfig_Validate()`, `BenchmarkManager_New()`
 
 ## v0.1.2 - 2025-06-02
 

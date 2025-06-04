@@ -58,7 +58,7 @@ func (c *captureOutput) read() (string, error) {
 	return string(buf[:n]), nil
 }
 
-func TestNewConsoleHandler(t *testing.T) {
+func TestConsoleHandler_New(t *testing.T) {
 	// Test với colored = true
 	h1 := NewConsoleHandler(true)
 	if h1 == nil {
@@ -78,7 +78,7 @@ func TestNewConsoleHandler(t *testing.T) {
 	}
 }
 
-func TestConsoleHandlerLog(t *testing.T) {
+func TestConsoleHandler_Log(t *testing.T) {
 	// Tạo capture để bắt đầu ra
 	capture, err := newCaptureOutput()
 	if err != nil {
@@ -113,7 +113,7 @@ func TestConsoleHandlerLog(t *testing.T) {
 	}
 }
 
-func TestColoredConsoleHandler(t *testing.T) {
+func TestConsoleHandler_Colored(t *testing.T) {
 	// Tạo capture để bắt đầu ra
 	capture, err := newCaptureOutput()
 	if err != nil {
@@ -142,7 +142,7 @@ func TestColoredConsoleHandler(t *testing.T) {
 	}
 }
 
-func TestConsoleHandlerWithArgs(t *testing.T) {
+func TestConsoleHandler_WithArgs(t *testing.T) {
 	// Tạo capture để bắt đầu ra
 	capture, err := newCaptureOutput()
 	if err != nil {
@@ -168,7 +168,7 @@ func TestConsoleHandlerWithArgs(t *testing.T) {
 	}
 }
 
-func TestConsoleHandlerClose(t *testing.T) {
+func TestConsoleHandler_Close(t *testing.T) {
 	h := NewConsoleHandler(true)
 
 	// Close không nên trả về lỗi
@@ -178,7 +178,7 @@ func TestConsoleHandlerClose(t *testing.T) {
 	}
 }
 
-func TestConsoleHandlerColorize(t *testing.T) {
+func TestConsoleHandler_Colorize(t *testing.T) {
 	h := &ConsoleHandler{colored: true}
 	message := "test message"
 

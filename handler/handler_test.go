@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestLevelString(t *testing.T) {
+func TestLevel_String(t *testing.T) {
 	tests := []struct {
 		name  string
 		level Level
@@ -27,7 +27,7 @@ func TestLevelString(t *testing.T) {
 	}
 }
 
-func TestLevelComparison(t *testing.T) {
+func TestLevel_Comparison(t *testing.T) {
 	// Kiểm tra các level có thứ tự đúng
 	if !(DebugLevel < InfoLevel) {
 		t.Error("DebugLevel nên nhỏ hơn InfoLevel")
@@ -50,7 +50,7 @@ func TestLevelComparison(t *testing.T) {
 }
 
 // TestLevelStringWithValues kiểm tra giá trị số của các level
-func TestLevelStringWithValues(t *testing.T) {
+func TestLevel_String_WithValues(t *testing.T) {
 	tests := []struct {
 		name  string
 		level Level
