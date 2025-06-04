@@ -14,7 +14,7 @@ The log package provides structured logging capabilities for Fork Framework appl
 package main
 
 import (
-    "go.fork.vn/app"
+    "go.fork.vn/core"
 )
 
 func main() {

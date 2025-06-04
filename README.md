@@ -58,7 +58,7 @@ log:
 package main
 
 import (
-    "go.fork.vn/app"
+    "go.fork.vn/core"
     "go.fork.vn/fork"
 )
 
@@ -247,6 +247,15 @@ func (app *Application) SetLogLevel(level string) error {
 - [Hướng dẫn sử dụng chi tiết](docs/usage.md)
 - [Tổng quan kiến trúc](docs/overview.md)
 - [API Documentation](https://pkg.go.dev/go.fork.vn/log)
+- [Release Notes](releases/) - Chi tiết về từng phiên bản
+
+## Release Management
+
+Dự án sử dụng structured release management với:
+- **Automated CI/CD**: GitHub Actions cho testing, building, và releasing
+- **Release Notes**: Chi tiết cho từng version trong thư mục `releases/`
+- **Migration Guides**: Hướng dẫn nâng cấp giữa các versions
+- **Automated Dependencies**: Dependabot tự động cập nhật dependencies
 
 ## Changelog
 

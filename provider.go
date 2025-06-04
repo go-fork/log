@@ -142,7 +142,7 @@ func (p *ServiceProvider) Boot(app di.Application) {
 	// Không yêu cầu thiết lập bổ sung sau khi đăng ký
 	if app == nil {
 		// Không thể boot nếu app là nil, nhưng không panic vì đây là phương thức tùy chọn
-		return
+		panic("application cannot be nil")
 	}
 
 }

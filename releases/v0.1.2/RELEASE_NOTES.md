@@ -1,4 +1,4 @@
-# Release Notes - Go-Fork Log Package v0.1.2
+# Release Notes - Fork Log Package v0.1.2
 
 **Release Date:** December 2024  
 **Package:** `go.fork.vn/log`  
@@ -6,7 +6,7 @@
 
 ## 🎯 Overview
 
-Version 0.1.2 focuses on significantly enhancing the testing infrastructure and performance monitoring capabilities of the Go-Fork log package. This release introduces comprehensive benchmark tests, improves test coverage, and ensures robust validation across all components.
+Version 0.1.2 focuses on significantly enhancing the testing infrastructure and performance monitoring capabilities of the Fork log package. This release introduces comprehensive benchmark tests, improves test coverage, and ensures robust validation across all components.
 
 ## ✨ New Features
 
@@ -25,6 +25,32 @@ Version 0.1.2 focuses on significantly enhancing the testing infrastructure and 
   - Validation speed across different configurations
   - Error handling performance
   - Parallel validation testing
+- **Concurrency Benchmarks**: Parallel operations performance measurements
+- **Edge Case Benchmarks**: Error conditions performance testing
+- **Memory Benchmarks**: Allocation tracking across all operations
+
+## 📋 What's Changed
+
+### Dependencies
+- ⬆️ **Updated**: `go.fork.vn/di` from v0.1.1 to v0.1.2
+
+## 📋 What's Changed
+
+### Dependencies
+- ⬆️ **Updated**: `go.fork.vn/config` from v0.1.1 to v0.1.2
+- ⬆️ **Updated**: `go.fork.vn/di` from v0.1.1 to v0.1.2
+
+### Technical Improvements
+- 🏆 **100% Benchmark Coverage**: Complete performance testing for all public APIs
+- 🧪 **Test Infrastructure**: Enhanced reliability with improved mock management
+- 📊 **Performance Metrics**: Comprehensive error path performance testing
+- ✅ **Quality Assurance**: Zero static analysis warnings and robust error handling
+
+### Testing Enhancements
+- **80%+ Test Coverage**: Comprehensive test coverage maintained across all functionalities
+- **Benchmark Stability**: Fixed mock conflicts and memory leaks in benchmark tests
+- **Resource Management**: Better cleanup in concurrent tests
+- **Error Handling**: Improved type assertions and error handling in test scenarios
 
 ### 🔧 Enhanced Test Infrastructure
 - **Improved Provider Tests**: Fixed test expectations to match actual implementation
@@ -161,7 +187,7 @@ This release focuses on internal improvements and testing infrastructure enhance
 For questions, issues, or contributions related to this release:
 - **GitHub Issues**: Report bugs or request features
 - **Documentation**: Refer to updated testing and benchmark guides
-- **Community**: Join Go-Fork community discussions
+- **Community**: Join Fork community discussions
 
 ---
 

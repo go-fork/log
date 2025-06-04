@@ -281,7 +281,7 @@ Use real logger with test-specific configuration:
 
 ```go
 func TestUserService_Integration(t *testing.T) {
-    app := app.NewApplication()
+    app := core.NewApplication()
     logger := app.MustMake("logger").(log.Logger)
     
     // Set test log level

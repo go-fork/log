@@ -36,7 +36,7 @@
 // Fork HTTP Framework (package fork) cung cấp web context và routing,
 // trong khi Fork Application (package app) quản lý dependency injection và lifecycle.
 //
-//	// 1. Khởi tạo ứng dụng Go-Fork (log được auto-register như Core Provider)
+//	// 1. Khởi tạo ứng dụng Fork (log được auto-register như Core Provider)
 //	config := map[string]interface{}{
 //	    "name": "myapp",
 //	    "path": "./configs",
@@ -94,7 +94,7 @@
 //	    }
 //	}
 //
-// # Sử dụng nâng cao trong Go-Fork
+// # Sử dụng nâng cao trong Fork
 //
 // Đối với các yêu cầu logging phức tạp, có thể truy cập log manager từ bất kỳ đâu trong ứng dụng:
 //
@@ -145,9 +145,9 @@
 //	    return nil
 //	}
 //
-// # Tích hợp với Go-Fork Components
+// # Tích hợp với Fork Components
 //
-// Log package tích hợp hoàn toàn với các component khác trong Go-Fork framework:
+// Log package tích hợp hoàn toàn với các component khác trong Fork framework:
 //
 // ## Database Operations
 //
@@ -215,11 +215,11 @@
 // - Interface Manager và triển khai DefaultManager cho các thao tác logging chính
 // - Package handler để hiểu về các loại output handler
 // - go.fork.vn/config để cấu hình log qua YAML files
-// - go.fork.vn/di để hiểu về dependency injection trong Go-Fork
+// - go.fork.vn/di để hiểu về dependency injection trong Fork
 //
 // # Tương thích Fork Framework
 //
-// Module này được thiết kế đặc biệt cho Go-Fork framework version v0.1.1 trở lên,
+// Module này được thiết kế đặc biệt cho Fork framework version v0.1.1 trở lên,
 // triển khai đầy đủ interface ServiceProvider với các phương thức Register, Boot,
-// Requires và Providers theo chuẩn Go-Fork dependency injection.
+// Requires và Providers theo chuẩn Fork dependency injection.
 package log

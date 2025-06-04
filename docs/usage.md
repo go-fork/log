@@ -10,12 +10,12 @@ This guide provides practical examples of using the log package within Fork Fram
 package main
 
 import (
-    "go.fork.vn/app"
+    "go.fork.vn/core"
 )
 
 func main() {
     // Create Fork application
-    app := app.NewApplication()
+    app := core.NewApplication()
     
     // Logger service is automatically registered
     logger := app.MustMake("logger").(log.Logger)
@@ -91,7 +91,7 @@ import (
     "net/http"
     "time"
     
-    "go.fork.vn/app"
+    "go.fork.vn/core"
     "go.fork.vn/log"
 )
 
@@ -171,7 +171,7 @@ import (
     "errors"
     "time"
     
-    "go.fork.vn/app"
+    "go.fork.vn/core"
     "go.fork.vn/log"
 )
 
@@ -283,7 +283,7 @@ package bootstrap
 
 import (
     "os"
-    "go.fork.vn/app"
+    "go.fork.vn/core"
     "go.fork.vn/log"
 )
 

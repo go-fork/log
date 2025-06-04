@@ -2,19 +2,17 @@ with-expecter: true
 resolve-type-alias: false
 disable-version-string: true
 quiet: false
-dir: "mocks"
-outpkg: "mocks"
+dir: "mocks"  # Giữ nguyên tên thư mục mocks
+outpkg: "log_mocks"  # Đặt tên package động theo tên package gốc
+mockname: "Mock{{.InterfaceName}}"  # Chuẩn đặt tên mock
+structname: "Mock{{.InterfaceName}}"
+filename: "{{.InterfaceName | snakecase}}.go"  # Tên file mock theo tên interface
 issue-845-fix: true
+recursive: true
 packages:
   "go.fork.vn/log":
     interfaces:
       Manager:
-        config:
-          filename: "manager.go"
-          mockname: "MockManager"
   "go.fork.vn/log/handler":
     interfaces:
       Handler:
-        config:
-          filename: "handler.go"
-          mockname: "MockHandler"
