@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## v0.1.4 - 2025-06-07
+
 ### Added
 - **Complete Vietnamese Documentation Suite**
   - Brand new comprehensive documentation written entirely in Vietnamese
@@ -303,7 +305,8 @@ docs/
 ### Dependencies
 - `go.fork.vn/di`: Dependency injection integration
 
-[Unreleased]: github.com/go-fork/log/compare/v0.1.3...HEAD
+[Unreleased]: github.com/go-fork/log/compare/v0.1.4...HEAD
+[v0.1.4]: github.com/go-fork/log/compare/v0.1.3...v0.1.4
 [v0.1.3]: github.com/go-fork/log/compare/v0.1.2...v0.1.3
 [v0.1.2]: github.com/go-fork/log/compare/v0.1.1...v0.1.2
 [v0.1.1]: github.com/go-fork/log/compare/v0.1.0...v0.1.1
