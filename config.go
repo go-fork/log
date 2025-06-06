@@ -1,13 +1,15 @@
 package log
 
+import "go.fork.vn/log/handler"
+
 // Config định nghĩa cấu hình cho log package.
 //
 // Struct này chứa các thiết lập cần thiết để khởi tạo và cấu hình
 // logging system bao gồm level và các handler configurations.
 type Config struct {
 	// Level xác định mức độ log tối thiểu sẽ được ghi.
-	// Các giá trị hợp lệ: debug, info, warning, error, fatal
-	Level string `yaml:"level" json:"level"`
+	// Các giá trị hợp lệ: DebugLevel, InfoLevel, WarningLevel, ErrorLevel, FatalLevel
+	Level handler.Level `yaml:"level" json:"level"`
 
 	// Console cấu hình cho console handler
 	Console ConsoleConfig `yaml:"console" json:"console"`
@@ -62,7 +64,7 @@ type StackHandlers struct {
 // DefaultConfig trả về cấu hình mặc định cho log package.
 //
 // Cấu hình mặc định sử dụng:
-//   - Level: info
+//   - Level: InfoLevel
 //   - Console handler được bật với màu sắc
 //   - File và Stack handlers được tắt
 //
@@ -70,7 +72,7 @@ type StackHandlers struct {
 //   - *Config: Cấu hình mặc định
 func DefaultConfig() *Config {
 	return &Config{
-		Level: "info",
+		Level: handler.InfoLevel,
 		Console: ConsoleConfig{
 			Enabled: true,
 			Colored: true,
@@ -102,18 +104,18 @@ func DefaultConfig() *Config {
 //   - error: Lỗi nếu cấu hình không hợp lệ
 func (c *Config) Validate() error {
 	// Kiểm tra level hợp lệ
-	validLevels := map[string]bool{
-		"debug":   true,
-		"info":    true,
-		"warning": true,
-		"error":   true,
-		"fatal":   true,
+	validLevels := map[handler.Level]bool{
+		handler.DebugLevel:   true,
+		handler.InfoLevel:    true,
+		handler.WarningLevel: true,
+		handler.ErrorLevel:   true,
+		handler.FatalLevel:   true,
 	}
 
 	if !validLevels[c.Level] {
 		return &ConfigError{
 			Field:   "level",
-			Value:   c.Level,
+			Value:   c.Level.String(),
 			Message: "invalid log level, must be one of: debug, info, warning, error, fatal",
 		}
 	}

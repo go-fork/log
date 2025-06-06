@@ -1,367 +1,273 @@
-# Log Package Overview
+# Tổng Quan Kiến Trúc
 
-## Architecture
+Package log được thiết kế đặc biệt cho Fork Framework, cung cấp hệ thống logging hiệu suất cao với kiến trúc shared handlers và contextual loggers.
 
-The log package is designed around Fork Framework's core principles of dependency injection, service providers, and interface-based design. It provides a unified logging system that integrates seamlessly with the framework's ecosystem while maintaining high performance and flexibility.
+## Kiến Trúc Tổng Quan
 
-### Core Components
-
-#### Logger Interface
-The central `log.Logger` interface provides all logging operations:
-- Structured logging with key-value pairs
-- Multiple log levels (Debug, Info, Warn, Error, Fatal)
-- Contextual logging with additional metadata
-- Performance-optimized logging methods
-
-#### Service Provider
-The `ServiceProvider` registers the logger as a singleton in the DI container, making it available throughout the application via `app.MustMake("logger")`.
-
-#### Manager Implementation
-The manager provides the concrete implementation of the Logger interface, handling:
-- Log formatting and output
-- Level filtering
-- Context management
-- Performance optimization
-
-## Design Principles
-
-### 1. Framework Integration First
-The log package is designed specifically for Fork Framework applications. All examples and patterns assume usage within the framework's DI container system.
-
-### 2. Structured Logging
-All logging methods support structured logging with key-value pairs for better searchability and analysis:
-
-```go
-logger.Info("User logged in", "user_id", 123, "ip", "192.168.1.1")
+```mermaid
+graph TB
+    subgraph "Fork Framework Application"
+        App[Fork App]
+        Container[DI Container]
+        Provider[LogServiceProvider]
+    end
+    
+    subgraph "Log Package"
+        Config[Config]
+        Manager[Manager]
+        
+        subgraph "Contextual Loggers"
+            UserLogger[UserService Logger]
+            OrderLogger[OrderService Logger]
+            PaymentLogger[PaymentService Logger]
+            AuthLogger[AuthService Logger]
+        end
+        
+        subgraph "Shared Handlers"
+            Console[Console Handler]
+            File[File Handler]
+            Stack[Stack Handler]
+        end
+    end
+    
+    App --> Container
+    Container --> Provider
+    Provider --> Manager
+    Config --> Manager
+    
+    Manager --> UserLogger
+    Manager --> OrderLogger
+    Manager --> PaymentLogger
+    Manager --> AuthLogger
+    
+    UserLogger --> Console
+    UserLogger --> File
+    UserLogger --> Stack
+    
+    OrderLogger --> Console
+    OrderLogger --> File
+    OrderLogger --> Stack
+    
+    PaymentLogger --> Console
+    PaymentLogger --> File
+    PaymentLogger --> Stack
+    
+    AuthLogger --> Console
+    AuthLogger --> File
+    AuthLogger --> Stack
 ```
 
-### 3. Performance Oriented
-The logger is optimized for high-performance applications:
-- Minimal allocations during logging
-- Efficient string formatting
-- Level-based filtering to avoid unnecessary work
+## Các Thành Phần Chính
 
-### 4. Contextual Information
-Support for adding context to log entries:
-- Request IDs for tracing
-- User information
-- Application state
+### 1. Manager (Quản Lý Tập Trung)
 
-## Logging Levels
+Manager là thành phần trung tâm thực hiện pattern **Shared Handlers Architecture**:
 
-### Debug Level
-Use for detailed diagnostic information, typically only enabled during development:
+- **Shared Handlers**: Tất cả loggers cùng chia sẻ các handler instances
+- **GetOrCreate Pattern**: Logger được tạo tự động theo context khi chưa tồn tại
+- **Runtime Management**: Quản lý handlers và loggers trong runtime
+- **Resource Efficiency**: Tránh duplicate handlers, tiết kiệm tài nguyên
 
-```go
-logger.Debug("Processing user request", "request_id", reqID, "user_id", userID)
+```mermaid
+graph LR
+    subgraph "Manager Responsibilities"
+        A[Handler Management] --> B[Logger Creation]
+        B --> C[Resource Sharing]
+        C --> D[Lifecycle Management]
+    end
 ```
 
-### Info Level
-Use for general informational messages about application flow:
+### 2. Logger (Contextual Logging)
 
-```go
-logger.Info("User registration completed", "user_id", userID, "email", email)
+Mỗi logger được gắn với một context cụ thể:
+
+- **Context-Based**: Logger được định danh bởi context (vd: "UserService", "OrderService")
+- **Structured Logging**: Hỗ trợ structured logs với key-value pairs
+- **Level Filtering**: Logs được filter theo level được cấu hình
+- **Handler Delegation**: Ủy thác việc ghi log cho các handlers
+
+```mermaid
+graph TD
+    Logger[Logger Instance] --> |Debug| Handler1[Handler 1]
+    Logger --> |Info| Handler1
+    Logger --> |Warning| Handler2[Handler 2]
+    Logger --> |Error| Handler2
+    Logger --> |Fatal| Handler3[Handler 3]
+    
+    Handler1 --> Console[Console Output]
+    Handler2 --> File[File Output]
+    Handler3 --> Stack[Stack Output]
 ```
 
-### Warn Level
-Use for potentially harmful situations that don't prevent operation:
+### 3. Handlers (Output Processors)
 
-```go
-logger.Warn("High memory usage detected", "usage_percent", 85)
+Handlers xử lý việc xuất logs ra các đích khác nhau:
+
+#### Console Handler
+- Xuất logs ra stdout/stderr
+- Hỗ trợ color coding theo level
+- Tối ưu cho development environment
+
+#### File Handler  
+- Ghi logs vào file
+- Hỗ trợ file rotation theo size
+- Tối ưu cho production logging
+
+#### Stack Handler
+- Kết hợp nhiều handlers khác
+- Cho phép log cùng lúc ra nhiều đích
+- Linh hoạt trong cấu hình
+
+```mermaid
+graph TB
+    subgraph "Handler Types"
+        CH[Console Handler]
+        FH[File Handler]
+        SH[Stack Handler]
+    end
+    
+    subgraph "Outputs"
+        Stdout[Standard Output]
+        File[Log Files]
+        Multiple[Multiple Destinations]
+    end
+    
+    CH --> Stdout
+    FH --> File
+    SH --> Multiple
 ```
 
-### Error Level
-Use for error events that might still allow the application to continue:
+## Tích Hợp Fork Framework
 
-```go
-logger.Error("Database connection failed", "error", err, "retry_count", retries)
+### Service Provider Pattern
+
+Package log tích hợp với Fork Framework thông qua `LogServiceProvider`:
+
+```mermaid
+sequenceDiagram
+    participant App as Fork App
+    participant Container as DI Container
+    participant Provider as LogServiceProvider
+    participant Manager as Log Manager
+    
+    App->>Container: Bootstrap
+    Container->>Provider: Register
+    Provider->>Container: Bind("log", Manager)
+    Container->>Manager: Create Instance
+    Manager->>Manager: Initialize Handlers
 ```
 
-### Fatal Level
-Use for very severe errors that will cause the application to terminate:
+### Dependency Injection
 
-```go
-logger.Fatal("Cannot start server", "error", err, "port", port)
-```
+Logger có thể được inject vào các service khác:
 
-## Framework Integration Patterns
-
-### Service Provider Registration
-```go
-// Automatic registration in Fork Framework
-config := map[string]interface{}{
-	    "name": "myapp",
-	    "path": "./configs",
-}
-app := app.New(config)
-// Logger provider is auto-registered
-
-// Access via DI container
-logger := app.MustMake("logger").(log.Logger)
-```
-
-### Dependency Injection in Services
 ```go
 type UserService struct {
     logger log.Logger
 }
 
-func NewUserService(app app.Application) *UserService {
+func NewUserService(container *container.Container) *UserService {
+    manager := container.Get("log").(log.Manager)
     return &UserService{
-        logger: app.MustMake("logger").(log.Logger),
+        logger: manager.GetLogger("UserService"),
     }
 }
+```
 
-func (s *UserService) CreateUser(user User) error {
-    s.logger.Info("Creating new user", "email", user.Email)
+## Workflow Chuẩn
+
+### 1. Khởi Tạo Application
+
+```mermaid
+sequenceDiagram
+    participant Config as Configuration
+    participant Provider as LogServiceProvider
+    participant Manager as Log Manager
+    participant Handlers as Shared Handlers
     
-    if err := s.validateUser(user); err != nil {
-        s.logger.Error("User validation failed", "error", err, "email", user.Email)
-        return err
-    }
+    Config->>Provider: Load Config
+    Provider->>Manager: Create with Config
+    Manager->>Handlers: Initialize All Handlers
+    Handlers->>Manager: Register Handlers
+```
+
+### 2. Runtime Logging
+
+```mermaid
+sequenceDiagram
+    participant Service as Business Service
+    participant Manager as Log Manager
+    participant Logger as Context Logger
+    participant Handlers as Shared Handlers
     
-    s.logger.Info("User created successfully", "user_id", user.ID)
-    return nil
-}
+    Service->>Manager: GetLogger("ServiceName")
+    Manager->>Logger: Create/Return Logger
+    Service->>Logger: Log Message
+    Logger->>Handlers: Delegate to Handlers
+    Handlers->>Handlers: Process & Output
 ```
 
-### Service Provider Logging
-```go
-func (p *DatabaseServiceProvider) Register(container di.Container) error {
-    logger := container.MustMake("logger").(log.Logger)
-    logger.Debug("Registering database service provider")
-    
-    return container.Singleton("database", func(container di.Container) (interface{}, error) {
-        logger.Info("Creating database connection")
-        // ...create database connection
-        return db, nil
-    })
-}
-```
+## Tính Năng Nâng Cao
 
-## Structured Logging
-
-### Key-Value Pairs
-The logger supports structured logging with key-value pairs:
+### 1. Runtime Handler Management
 
 ```go
-logger.Info("HTTP request completed",
-    "method", "POST",
-    "path", "/api/users",
-    "status", 201,
-    "duration", "45ms",
-    "user_id", 123,
-)
+// Thêm handler mới trong runtime
+manager.AddHandler(log.HandlerTypeCustom, customHandler)
+
+// Cấu hình handler cho logger cụ thể
+manager.SetHandler("PaymentService", log.HandlerTypeCustom)
+
+// Gỡ bỏ handler
+manager.RemoveHandler(log.HandlerTypeCustom)
 ```
 
-### Consistent Field Names
-Use consistent field names across your application:
+### 2. Context Switching
 
 ```go
-// Good - consistent naming
-logger.Info("User action", "user_id", 123, "action", "login")
-logger.Error("User error", "user_id", 123, "error", err)
+// Logger có thể thay đổi context
+userLogger := manager.GetLogger("UserService")
+userLogger.SetContext("UserService::Registration")
 
-// Avoid - inconsistent naming
-logger.Info("User action", "userID", 123, "action", "login")
-logger.Error("User error", "user", 123, "err", err)
+// Log sẽ hiển thị context mới
+userLogger.Info("User registration started")
+// Output: [INFO] [UserService::Registration] User registration started
 ```
 
-### Nested Context
-For complex data structures, use nested context:
+### 3. Performance Optimization
 
-```go
-logger.Info("Order processed",
-    "order_id", order.ID,
-    "customer_id", order.CustomerID,
-    "items_count", len(order.Items),
-    "total_amount", order.Total,
-    "shipping_address", order.ShippingAddress.String(),
-)
-```
+- **Handler Reuse**: Handlers được chia sẻ giữa các loggers
+- **Level Filtering**: Logs được filter sớm để tránh xử lý không cần thiết
+- **Concurrent Safe**: Thread-safe cho các ứng dụng concurrent
+- **Memory Efficient**: Tối ưu memory usage thông qua shared resources
 
-## Performance Considerations
+## Patterns Được Hỗ Trợ
 
-### Level-Based Filtering
-The logger performs level-based filtering to avoid unnecessary work:
+### 1. Singleton Pattern (Manager)
+- Một Manager instance duy nhất trong application
+- Quản lý tất cả handlers và loggers
 
-```go
-// Only evaluated if Debug level is enabled
-logger.Debug("Expensive operation", "result", expensiveComputation())
+### 2. Factory Pattern (Logger Creation)
+- Manager tạo loggers theo context
+- GetOrCreate pattern đảm bảo không duplicate
 
-// Better - check level first for expensive operations
-if logger.IsDebugEnabled() {
-    logger.Debug("Expensive operation", "result", expensiveComputation())
-}
-```
+### 3. Strategy Pattern (Handlers)
+- Các handler implementations khác nhau
+- Có thể swap handlers trong runtime
 
-### String Formatting
-Avoid expensive string operations in log arguments:
+### 4. Observer Pattern (Stack Handler)
+- Stack handler notify cho multiple sub-handlers
+- Loose coupling giữa loggers và output destinations
 
-```go
-// Good - let the logger handle formatting
-logger.Info("Processing items", "count", len(items), "type", itemType)
+## So Sánh Với Các Giải Pháp Khác
 
-// Avoid - expensive string operations
-logger.Info(fmt.Sprintf("Processing %d items of type %s", len(items), itemType))
-```
+| Tính Năng | Fork Log | Logrus | Zap | Go Log |
+|-----------|----------|--------|-----|---------|
+| Shared Handlers | ✅ | ❌ | ❌ | ❌ |
+| Contextual Loggers | ✅ | Partial | Partial | ❌ |
+| Fork Framework Integration | ✅ | ❌ | ❌ | ❌ |
+| Runtime Handler Management | ✅ | Limited | Limited | ❌ |
+| Zero Allocation | Partial | ❌ | ✅ | ❌ |
+| Structured Logging | ✅ | ✅ | ✅ | ❌ |
 
-### Batch Logging
-For high-frequency logging, consider batching:
-
-```go
-type BatchLogger struct {
-    logger log.Logger
-    buffer []LogEntry
-    mu     sync.Mutex
-}
-
-func (b *BatchLogger) flush() {
-    b.mu.Lock()
-    defer b.mu.Unlock()
-    
-    for _, entry := range b.buffer {
-        b.logger.Log(entry.Level, entry.Message, entry.Fields...)
-    }
-    b.buffer = b.buffer[:0]
-}
-```
-
-## Error Handling
-
-### Logging Errors
-Always include error information in log entries:
-
-```go
-if err := userService.CreateUser(user); err != nil {
-    logger.Error("Failed to create user",
-        "error", err,
-        "user_email", user.Email,
-        "validation_errors", user.ValidationErrors(),
-    )
-    return err
-}
-```
-
-### Error Context
-Provide context about where and why the error occurred:
-
-```go
-func (s *UserService) processPayment(userID int, amount float64) error {
-    logger.Info("Processing payment", "user_id", userID, "amount", amount)
-    
-    if err := s.paymentGateway.Charge(userID, amount); err != nil {
-        logger.Error("Payment processing failed",
-            "error", err,
-            "user_id", userID,
-            "amount", amount,
-            "gateway", s.paymentGateway.Name(),
-            "operation", "charge",
-        )
-        return fmt.Errorf("payment failed: %w", err)
-    }
-    
-    logger.Info("Payment processed successfully", "user_id", userID, "amount", amount)
-    return nil
-}
-```
-
-## Testing Strategy
-
-### Unit Testing
-Mock the log.Logger interface for unit tests:
-
-```go
-mockLogger := mocks.NewMockLogger(t)
-mockLogger.On("Info", "User created", "user_id", 123).Return()
-```
-
-### Integration Testing
-Use real logger with test-specific configuration:
-
-```go
-func TestUserService_Integration(t *testing.T) {
-    app := core.NewApplication()
-    logger := app.MustMake("logger").(log.Logger)
-    
-    // Set test log level
-    logger.SetLevel(log.DebugLevel)
-    
-    service := NewUserService(app)
-    // ...test implementation
-}
-```
-
-### Log Verification
-Verify that expected log entries are created:
-
-```go
-func TestUserService_CreateUser_LogsSuccess(t *testing.T) {
-    mockLogger := mocks.NewMockLogger(t)
-    
-    // Expect success log
-    mockLogger.On("Info", "User created successfully", "user_id", 123).Return()
-    
-    service := &UserService{logger: mockLogger}
-    service.CreateUser(user)
-    
-    mockLogger.AssertExpectations(t)
-}
-```
-
-## Best Practices
-
-### 1. Use Structured Logging
-Always use key-value pairs for structured logging:
-
-```go
-// Good
-logger.Info("User login", "user_id", 123, "ip", clientIP)
-
-// Avoid
-logger.Info(fmt.Sprintf("User %d logged in from %s", 123, clientIP))
-```
-
-### 2. Include Relevant Context
-Include context that helps with debugging:
-
-```go
-logger.Error("Database query failed",
-    "error", err,
-    "query", query,
-    "params", params,
-    "duration", time.Since(start),
-    "connection_id", connID,
-)
-```
-
-### 3. Use Appropriate Log Levels
-Choose the right log level for each message:
-
-```go
-logger.Debug("Entering function", "user_id", userID)  // Development only
-logger.Info("User action completed", "action", action) // Normal operations
-logger.Warn("Rate limit approaching", "current", current, "limit", limit) // Warnings
-logger.Error("Operation failed", "error", err) // Errors
-logger.Fatal("Cannot start application", "error", err) // Fatal errors
-```
-
-### 4. Avoid Logging Sensitive Information
-Never log sensitive data like passwords, tokens, or personal information:
-
-```go
-// Good
-logger.Info("User authenticated", "user_id", user.ID)
-
-// Never do this
-logger.Info("User authenticated", "password", user.Password, "token", token)
-```
-
-### 5. Performance Optimization
-Check log level for expensive operations:
-
-```go
-if logger.IsDebugEnabled() {
-    logger.Debug("Request details", "body", string(requestBody))
-}
-```
+Thiết kế này đảm bảo package log phù hợp hoàn hảo với kiến trúc và triết lý của Fork Framework.

@@ -1,225 +1,353 @@
-// Package log cung cấp hệ thống logging linh hoạt, có thể mở rộng và thread-safe
-// cho các ứng dụng Go trong hệ sinh thái Fork Framework.
+// Package log cung cấp hệ thống logging có cấu trúc và hiệu suất cao cho Fork Framework,
+// được thiết kế với kiến trúc Shared Handlers và Contextual Loggers.
 //
 // # Tổng quan
 //
-// Package này triển khai hệ thống logging toàn diện với nhiều mức độ nghiêm trọng,
-// các handler output khác nhau (console, file, v.v.), và giao diện quản lý tập trung.
-// Được thiết kế để thread-safe và quản lý tài nguyên hiệu quả trong các ứng dụng đồng thời.
+// Package log triển khai một hệ thống logging toàn diện với kiến trúc Shared Handlers,
+// nơi các handler được chia sẻ giữa nhiều logger instances để tối ưu hiệu suất và tài nguyên.
+// Mỗi logger có context riêng (VD: UserService, OrderService) để dễ dàng theo dõi nguồn gốc log.
 //
-// # Tính năng
+// # Tính năng chính
 //
-//   - Lọc log đa cấp (Debug, Info, Warning, Error, Fatal)
-//   - Nhiều handler output đồng thời
-//   - Thao tác thread-safe với tranh chấp lock tối thiểu
-//   - Hỗ trợ định dạng kiểu Printf
-//   - Kiến trúc handler tùy chỉnh có thể mở rộng
-//   - Output console có màu sắc cho development
-//   - Tự động xoay file với kích thước và thời gian trigger
-//   - Tích hợp dependency injection
-//   - Ngăn chặn memory leak với quản lý tài nguyên đúng cách
-//   - Cô lập lỗi handler riêng lẻ
-//   - Quản lý handler runtime và cấu hình lại động
+//   - Contextual Logging: Logger được tạo theo context để phân biệt nguồn gốc
+//   - Shared Handlers: Handlers được chia sẻ giữa nhiều logger instances
+//   - Multi-Level Support: Debug, Info, Warning, Error, Fatal levels
+//   - Flexible Configuration: Cấu hình linh hoạt cho console, file, stack handlers
+//   - Runtime Management: Quản lý handlers và loggers trong runtime
+//   - High Performance: Tối ưu hóa cho ứng dụng hiệu suất cao
+//   - Fork Framework Integration: Tích hợp sâu với DI container và service providers
+//   - Thread-Safe: An toàn cho các ứng dụng concurrent
+//   - Zero Allocation: Tối ưu allocation cho hot paths
 //
-// # Kiến trúc
+// # Kiến trúc Shared Handlers
 //
-// Package log tuân theo service provider pattern và thiết kế dựa trên interface của Fork Framework:
+// Package sử dụng kiến trúc Shared Handlers với các thành phần chính:
 //
-//   - Manager: Điều phối logging trung tâm triển khai interface Manager
-//   - Handler: Đích output có thể cắm thêm triển khai interface Handler
-//   - ServiceProvider: Tích hợp DI container cho thiết lập tự động
-//   - Config: Quản lý cấu hình dựa trên YAML/environment
+//   - Manager: Quản lý tập trung các handlers và loggers
+//   - Shared Handlers: Console, File, Stack handlers được chia sẻ
+//   - Contextual Loggers: Mỗi logger có context riêng
+//   - Runtime Management: Thêm/xóa handlers và loggers trong runtime
 //
-// # Tích hợp Fork Framework
+// # Sử dụng cơ bản
 //
-// Log package là Core Provider được tự động đăng ký khi khởi tạo ứng dụng Fork.
-// Fork HTTP Framework (package fork) cung cấp web context và routing,
-// trong khi Fork Application (package app) quản lý dependency injection và lifecycle.
+//	package main
 //
-//	// 1. Khởi tạo ứng dụng Fork (log được auto-register như Core Provider)
-//	config := map[string]interface{}{
-//	    "name": "myapp",
-//	    "path": "./configs",
-//	}
-//	app := core.New(config)
+//	import (
+//	    "go.fork.vn/log"
+//	    "go.fork.vn/log/handler"
+//	)
 //
-//	// 2. Tạo file cấu hình configs/myapp.yaml
-//	log:
-//	  level: "info"
-//	  console:
-//	    enabled: true
-//	    colored: true
-//	  file:
-//	    enabled: true
-//	    path: "storage/logs/app.log"
-//	    max_size: 10485760  # 10MB
-//	  stack:
-//	    enabled: false
-//	    handlers:
-//	      console: true
-//	      file: true
-//
-//	// 3. Sử dụng log trong controller
-//	func (c *UserController) Create(ctx *fork.Context) error {
-//	    logger := ctx.App().Log()
-//
-//	    logger.Info("Creating new user: %s", userData.Email)
-//
-//	    user, err := c.userService.Create(userData)
-//	    if err != nil {
-//	        logger.Error("Failed to create user: %v", err)
-//	        return ctx.JSON(500, map[string]string{"error": "Internal server error"})
+//	func main() {
+//	    // Tạo cấu hình
+//	    config := &log.Config{
+//	        Level: handler.InfoLevel,
+//	        Console: log.ConsoleConfig{
+//	            Enabled: true,
+//	            Colored: true,
+//	        },
+//	        File: log.FileConfig{
+//	            Enabled: true,
+//	            Path:    "logs/app.log",
+//	            MaxSize: 10 * 1024 * 1024, // 10MB
+//	        },
 //	    }
 //
-//	    logger.Info("User created successfully: ID=%d", user.ID)
-//	    return ctx.JSON(201, user)
+//	    // Khởi tạo manager
+//	    manager := log.NewManager(config)
+//	    defer manager.Close()
+//
+//	    // Lấy logger theo context
+//	    userLogger := manager.GetLogger("UserService")
+//	    orderLogger := manager.GetLogger("OrderService")
+//
+//	    // Structured logging
+//	    userLogger.Info("User logged in", "user_id", 12345, "username", "john_doe")
+//	    orderLogger.Warning("Low stock", "product_id", "ABC123", "stock", 2)
+//	    userLogger.Error("Database error", "error", "connection timeout")
 //	}
 //
-//	// 4. Sử dụng trong middleware
-//	func LoggingMiddleware() fork.MiddlewareFunc {
-//	    return func(c *fork.Context) error {
-//	        logger := c.App().Log()
+// # Tích hợp với Fork Framework
 //
-//	        start := time.Now()
-//	        err := c.Next()
-//	        duration := time.Since(start)
+// Package log tích hợp mượt mà với Fork Framework thông qua Service Provider pattern:
 //
-//	        logger.Info("HTTP %s %s - %d (%v)",
-//	            c.Request().Method,
-//	            c.Request().URL.Path,
-//	            c.Response().StatusCode,
-//	            duration)
+//	// main.go
+//	func main() {
+//	    app := fork.NewApplication()
 //
-//	        return err
-//	    }
+//	    // Đăng ký log service provider
+//	    logConfig := log.DefaultConfig()
+//	    app.RegisterProvider(providers.NewLogProvider(logConfig))
+//
+//	    // Đăng ký service khác
+//	    app.RegisterProvider(providers.NewUserServiceProvider())
+//
+//	    app.Run()
 //	}
 //
-// # Sử dụng nâng cao trong Fork
+// # Service Integration Pattern
 //
-// Đối với các yêu cầu logging phức tạp, có thể truy cập log manager từ bất kỳ đâu trong ứng dụng:
+// Trong Fork Framework, services có thể inject log manager thông qua DI container:
 //
-//	// Trong service layer với dependency injection
+//	// services/user_service.go
 //	type UserService struct {
-//	    app app.Application
+//	    logger log.Logger
+//	    db     *database.DB
 //	}
 //
-//	func NewUserService(app app.Application) *UserService {
+//	func NewUserService(container *container.Container) *UserService {
+//	    manager := container.Get("log").(log.Manager)
+//
 //	    return &UserService{
-//	        app: app,
+//	        logger: manager.GetLogger("UserService"),
+//	        db:     container.Get("database").(*database.DB),
 //	    }
 //	}
 //
-//	func (s *UserService) ProcessPayment(userID int, amount float64) error {
-//	    logger := s.app.Log()
+//	func (s *UserService) CreateUser(user *User) error {
+//	    s.logger.Info("Creating user", "username", user.Username)
 //
-//	    logger.Info("Processing payment for user %d: $%.2f", userID, amount)
-//
-//	    // Xử lý logic payment
-//	    if amount <= 0 {
-//	        logger.Warning("Invalid payment amount for user %d: $%.2f", userID, amount)
-//	        return errors.New("invalid amount")
-//	    }
-//
-//	    logger.Debug("Payment validation passed for user %d", userID)
-//	    return nil
-//	}
-//
-//	// Cấu hình log level động từ ứng dụng
-//	func (app *Application) SetLogLevel(level string) error {
-//	    logger := app.Log()
-//
-//	    switch level {
-//	    case "debug":
-//	        logger.SetMinLevel(handler.DebugLevel)
-//	    case "info":
-//	        logger.SetMinLevel(handler.InfoLevel)
-//	    case "warning":
-//	        logger.SetMinLevel(handler.WarningLevel)
-//	    case "error":
-//	        logger.SetMinLevel(handler.ErrorLevel)
-//	    default:
-//	        return fmt.Errorf("invalid log level: %s", level)
-//	    }
-//
-//	    logger.Info("Log level changed to: %s", level)
-//	    return nil
-//	}
-//
-// # Tích hợp với Fork Components
-//
-// Log package tích hợp hoàn toàn với các component khác trong Fork framework:
-//
-// ## Database Operations
-//
-//	func (r *UserRepository) Create(user *User) error {
-//	    logger := r.app.Log()
-//
-//	    logger.Debug("Creating user in database: %+v", user)
-//
-//	    result := r.db.Create(user)
-//	    if result.Error != nil {
-//	        logger.Error("Database error creating user: %v", result.Error)
-//	        return result.Error
-//	    }
-//
-//	    logger.Info("User created successfully: ID=%d, Email=%s", user.ID, user.Email)
-//	    return nil
-//	}
-//
-// ## Queue Jobs
-//
-//	func (j *EmailJob) Handle(data []byte) error {
-//	    logger := j.app.Log()
-//
-//	    logger.Info("Processing email job: %s", string(data))
-//
-//	    if err := j.sendEmail(data); err != nil {
-//	        logger.Error("Failed to send email: %v", err)
+//	    if err := s.db.Create(user); err != nil {
+//	        s.logger.Error("Failed to create user",
+//	            "username", user.Username,
+//	            "error", err.Error(),
+//	        )
 //	        return err
 //	    }
 //
-//	    logger.Info("Email sent successfully")
+//	    s.logger.Info("User created successfully",
+//	        "user_id", user.ID,
+//	        "username", user.Username,
+//	    )
+//
 //	    return nil
 //	}
 //
-// ## Scheduled Tasks
+// # Handlers
 //
-//	func (t *CleanupTask) Run() error {
-//	    logger := t.app.Log()
+// Package hỗ trợ 3 loại handler chính:
 //
-//	    logger.Info("Starting cleanup task")
+// ## Console Handler
 //
-//	    deleted, err := t.cleanOldFiles()
+// Xuất logs ra stdout/stderr với hỗ trợ màu sắc:
+//
+//	consoleConfig := log.ConsoleConfig{
+//	    Enabled: true,
+//	    Colored: true, // Màu sắc theo level
+//	}
+//
+// ## File Handler
+//
+// Ghi logs vào file với rotation tự động:
+//
+//	fileConfig := log.FileConfig{
+//	    Enabled: true,
+//	    Path:    "/var/log/app/app.log",
+//	    MaxSize: 100 * 1024 * 1024, // 100MB
+//	}
+//
+// ## Stack Handler
+//
+// Kết hợp nhiều handlers để log đồng thời ra nhiều đích:
+//
+//	stackConfig := log.StackConfig{
+//	    Enabled: true,
+//	    Handlers: log.StackHandlers{
+//	        Console: true,
+//	        File:    true,
+//	    },
+//	}
+//
+// # Custom Handlers
+//
+// Có thể tạo custom handlers bằng cách implement interface Handler:
+//
+//	type DatabaseHandler struct {
+//	    db *sql.DB
+//	}
+//
+//	func (h *DatabaseHandler) Log(level handler.Level, message string, args ...interface{}) error {
+//	    query := `INSERT INTO logs (level, message, data, created_at) VALUES (?, ?, ?, ?)`
+//	    data, _ := json.Marshal(h.argsToMap(args))
+//	    _, err := h.db.Exec(query, level.String(), message, string(data), time.Now())
+//	    return err
+//	}
+//
+//	func (h *DatabaseHandler) Close() error {
+//	    return nil
+//	}
+//
+// # Log Levels
+//
+// Package hỗ trợ 5 levels logging chuẩn:
+//
+//   - Debug (0): Chi tiết implementation, chỉ development
+//   - Info (1): Thông tin chung về application flow
+//   - Warning (2): Cảnh báo, tình huống bất thường nhưng không critical
+//   - Error (3): Lỗi xảy ra nhưng application vẫn tiếp tục
+//   - Fatal (4): Lỗi nghiêm trọng, có thể dẫn đến application dừng
+//
+// # Cấu hình Environment-Specific
+//
+// Cấu hình khác nhau cho từng môi trường:
+//
+//	// Development
+//	devConfig := &log.Config{
+//	    Level: handler.DebugLevel,
+//	    Console: log.ConsoleConfig{Enabled: true, Colored: true},
+//	    File:    log.FileConfig{Enabled: true, Path: "logs/dev.log"},
+//	    Stack:   log.StackConfig{Enabled: true, Handlers: log.StackHandlers{Console: true, File: true}},
+//	}
+//
+//	// Production
+//	prodConfig := &log.Config{
+//	    Level: handler.InfoLevel,
+//	    Console: log.ConsoleConfig{Enabled: false},
+//	    File:    log.FileConfig{Enabled: true, Path: "/var/log/app/app.log", MaxSize: 100*1024*1024},
+//	    Stack:   log.StackConfig{Enabled: false},
+//	}
+//
+// # Middleware Logging
+//
+// Tích hợp với HTTP middleware trong Fork Framework:
+//
+//	func LoggingMiddleware(manager log.Manager) func(http.Handler) http.Handler {
+//	    logger := manager.GetLogger("HTTPMiddleware")
+//
+//	    return func(next http.Handler) http.Handler {
+//	        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+//	            start := time.Now()
+//
+//	            logger.Info("Request started",
+//	                "method", r.Method,
+//	                "path", r.URL.Path,
+//	                "remote_addr", r.RemoteAddr,
+//	            )
+//
+//	            next.ServeHTTP(w, r)
+//
+//	            logger.Info("Request completed",
+//	                "method", r.Method,
+//	                "path", r.URL.Path,
+//	                "duration", time.Since(start).String(),
+//	            )
+//	        })
+//	    }
+//	}
+//
+// # Performance Monitoring
+//
+// Pattern để monitor performance với logging:
+//
+//	type PerformanceLogger struct {
+//	    logger log.Logger
+//	}
+//
+//	func (p *PerformanceLogger) TimeOperation(operation string, fn func() error, context ...interface{}) error {
+//	    start := time.Now()
+//
+//	    p.logger.Info("Operation started", append(context, "operation", operation)...)
+//
+//	    err := fn()
+//	    duration := time.Since(start)
+//
+//	    logArgs := append(context, "operation", operation, "duration_ms", duration.Milliseconds())
+//
 //	    if err != nil {
-//	        logger.Error("Cleanup task failed: %v", err)
-//	        return err
+//	        p.logger.Error("Operation failed", append(logArgs, "error", err.Error())...)
+//	    } else {
+//	        p.logger.Info("Operation completed", logArgs...)
 //	    }
 //
-//	    logger.Info("Cleanup completed: %d files deleted", deleted)
-//	    return nil
+//	    return err
 //	}
 //
-// # Cấu hình Log Handlers
+// # Runtime Handler Management
 //
-// Log package hỗ trợ 3 loại handler chính được cấu hình qua YAML:
+// Quản lý handlers trong runtime:
 //
-// - Console Handler: Ghi log ra console với hỗ trợ màu sắc
-// - File Handler: Ghi log vào file với tự động rotation
-// - Stack Handler: Kết hợp nhiều handler cùng lúc
+//	// Thêm custom handler
+//	dbHandler := NewDatabaseHandler(db)
+//	manager.AddHandler("database", dbHandler)
 //
-// Tất cả handlers được quản lý tự động bởi ServiceProvider và không cần
-// cấu hình thủ công trong code ứng dụng.
+//	// Set handler cho logger cụ thể
+//	manager.SetHandler("AuditService", "database")
 //
-// # Xem thêm
+//	// Remove handler
+//	manager.RemoveHandler("database")
 //
-// - Interface Manager và triển khai DefaultManager cho các thao tác logging chính
-// - Package handler để hiểu về các loại output handler
-// - go.fork.vn/config để cấu hình log qua YAML files
-// - go.fork.vn/di để hiểu về dependency injection trong Fork
+// # Testing với Mock Loggers
 //
-// # Tương thích Fork Framework
+// Package cung cấp mock interfaces cho testing:
 //
-// Module này được thiết kế đặc biệt cho Fork framework version v0.1.1 trở lên,
-// triển khai đầy đủ interface ServiceProvider với các phương thức Register, Boot,
-// Requires và Providers theo chuẩn Fork dependency injection.
+//	func TestUserService_CreateUser(t *testing.T) {
+//	    // Setup mock logger
+//	    mockLogger := &MockLogger{}
+//	    service := &UserService{logger: mockLogger}
+//
+//	    // Execute
+//	    user := &User{Username: "testuser"}
+//	    err := service.CreateUser(user)
+//
+//	    // Assert
+//	    assert.NoError(t, err)
+//	    assert.Contains(t, mockLogger.Logs, "Creating user")
+//	    assert.Contains(t, mockLogger.Logs, "User created successfully")
+//	}
+//
+// # Default Configuration
+//
+// Package cung cấp cấu hình mặc định phù hợp cho hầu hết use cases:
+//
+//	config := log.DefaultConfig()
+//	// Level: InfoLevel
+//	// Console: Enabled=true, Colored=true
+//	// File: Enabled=false
+//	// Stack: Enabled=false
+//
+// # Structured Logging
+//
+// Sử dụng structured logging với key-value pairs:
+//
+//	logger.Info("User action",
+//	    "user_id", 12345,
+//	    "action", "login",
+//	    "ip_address", "192.168.1.100",
+//	    "user_agent", "Mozilla/5.0...",
+//	    "success", true,
+//	)
+//
+// # Performance Characteristics
+//
+//   - Shared Handlers: Giảm memory footprint bằng cách chia sẻ handlers
+//   - Level Filtering: Logs được filter sớm để tránh xử lý không cần thiết
+//   - Concurrent Safe: Thread-safe cho các ứng dụng concurrent
+//   - Zero Allocation: Tối ưu allocation cho hot paths
+//   - Resource Management: Tự động cleanup và proper handler closure
+//
+// # Documentation
+//
+// Tài liệu chi tiết bằng tiếng Việt có sẵn tại:
+//   - docs/index.md: Trang chủ với quick start guide
+//   - docs/overview.md: Kiến trúc với Mermaid diagrams
+//   - docs/configuration.md: Hướng dẫn cấu hình chi tiết
+//   - docs/handler.md: Tài liệu về các handler types
+//   - docs/logger.md: Interface và patterns sử dụng
+//   - docs/workflows.md: Quy trình và integration workflows
+//
+// # Requirements
+//
+//   - Go 1.19+
+//   - Fork Framework (optional, for full integration)
+//
+// # Installation
+//
+//	go get go.fork.vn/log@latest
+//
+// # Compatibility
+//
+// Package này được thiết kế đặc biệt cho Fork Framework và tương thích với:
+//   - go.fork.vn/di (Dependency Injection)
+//   - go.fork.vn/config (Configuration Management)
+//   - Fork Framework service provider pattern
+//   - Standard Go logging interfaces
 package log

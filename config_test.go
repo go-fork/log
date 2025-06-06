@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.fork.vn/log/handler"
 )
 
 func TestConfig_Validate(t *testing.T) {
@@ -20,7 +21,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "Invalid log level",
 			config: &Config{
-				Level: "unknown",
+				Level: handler.Level(99), // Invalid level
 				Console: ConsoleConfig{
 					Enabled: true,
 				},
@@ -30,7 +31,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "No handlers enabled",
 			config: &Config{
-				Level: "info",
+				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
 					Enabled: false,
 				},
@@ -46,7 +47,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "File handler enabled without path",
 			config: &Config{
-				Level: "info",
+				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
 					Enabled: false,
 				},
@@ -63,7 +64,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "File handler with negative max size",
 			config: &Config{
-				Level: "info",
+				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
 					Enabled: false,
 				},
@@ -81,7 +82,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "Stack handler enabled without sub-handlers",
 			config: &Config{
-				Level: "info",
+				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
 					Enabled: false,
 				},
@@ -101,7 +102,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "Stack handler with file sub-handler but no file path",
 			config: &Config{
-				Level: "info",
+				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
 					Enabled: false,
 				},
@@ -122,7 +123,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "Valid config with all features enabled",
 			config: &Config{
-				Level: "debug",
+				Level: handler.DebugLevel,
 				Console: ConsoleConfig{
 					Enabled: true,
 					Colored: true,
@@ -161,7 +162,7 @@ func TestConfig_Validate(t *testing.T) {
 func TestConfig_DefaultConfig(t *testing.T) {
 	config := DefaultConfig()
 
-	assert.Equal(t, "info", config.Level)
+	assert.Equal(t, handler.InfoLevel, config.Level)
 	assert.True(t, config.Console.Enabled)
 	assert.True(t, config.Console.Colored)
 	assert.False(t, config.File.Enabled)
@@ -194,10 +195,16 @@ func TestConfigError_WithoutValue(t *testing.T) {
 }
 
 func TestConfig_ValidateAllLogLevels(t *testing.T) {
-	validLevels := []string{"debug", "info", "warning", "error", "fatal"}
+	validLevels := []handler.Level{
+		handler.DebugLevel,
+		handler.InfoLevel,
+		handler.WarningLevel,
+		handler.ErrorLevel,
+		handler.FatalLevel,
+	}
 
 	for _, level := range validLevels {
-		t.Run("Valid level: "+level, func(t *testing.T) {
+		t.Run("Valid level: "+level.String(), func(t *testing.T) {
 			config := &Config{
 				Level: level,
 				Console: ConsoleConfig{
@@ -237,7 +244,7 @@ func TestConfig_ValidateFileHandlerConfigurations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &Config{
-				Level: "info",
+				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
 					Enabled: false,
 				},
@@ -281,7 +288,7 @@ func BenchmarkConfig_Validate_Valid(b *testing.B) {
 // BenchmarkConfigValidateInvalidLevel đo hiệu suất validate với level không hợp lệ
 func BenchmarkConfig_Validate_InvalidLevel(b *testing.B) {
 	config := &Config{
-		Level: "invalid_level",
+		Level: handler.Level(99), // Invalid level
 		Console: ConsoleConfig{
 			Enabled: true,
 		},
@@ -297,7 +304,7 @@ func BenchmarkConfig_Validate_InvalidLevel(b *testing.B) {
 // BenchmarkConfigValidateNoHandlers đo hiệu suất validate khi không có handler
 func BenchmarkConfig_Validate_NoHandlers(b *testing.B) {
 	config := &Config{
-		Level: "info",
+		Level: handler.InfoLevel,
 		Console: ConsoleConfig{
 			Enabled: false,
 		},
@@ -319,7 +326,7 @@ func BenchmarkConfig_Validate_NoHandlers(b *testing.B) {
 // BenchmarkConfigValidateFileHandler đo hiệu suất validate file handler
 func BenchmarkConfig_Validate_FileHandler(b *testing.B) {
 	config := &Config{
-		Level: "info",
+		Level: handler.InfoLevel,
 		Console: ConsoleConfig{
 			Enabled: false,
 		},
@@ -343,7 +350,7 @@ func BenchmarkConfig_Validate_FileHandler(b *testing.B) {
 // BenchmarkConfigValidateStackHandler đo hiệu suất validate stack handler
 func BenchmarkConfig_Validate_StackHandler(b *testing.B) {
 	config := &Config{
-		Level: "info",
+		Level: handler.InfoLevel,
 		Console: ConsoleConfig{
 			Enabled: false,
 		},
@@ -370,7 +377,7 @@ func BenchmarkConfig_Validate_StackHandler(b *testing.B) {
 // BenchmarkConfigValidateComplexConfig đo hiệu suất validate cấu hình phức tạp
 func BenchmarkConfig_Validate_ComplexConfig(b *testing.B) {
 	config := &Config{
-		Level: "debug",
+		Level: handler.DebugLevel,
 		Console: ConsoleConfig{
 			Enabled: true,
 			Colored: true,
@@ -429,10 +436,16 @@ func BenchmarkConfigError_String(b *testing.B) {
 
 // BenchmarkConfigValidateWithDifferentLevels đo hiệu suất validate với các level khác nhau
 func BenchmarkConfig_Validate_WithDifferentLevels(b *testing.B) {
-	levels := []string{"debug", "info", "warning", "error", "fatal"}
+	levels := []handler.Level{
+		handler.DebugLevel,
+		handler.InfoLevel,
+		handler.WarningLevel,
+		handler.ErrorLevel,
+		handler.FatalLevel,
+	}
 
 	for _, level := range levels {
-		b.Run("Level_"+level, func(b *testing.B) {
+		b.Run("Level_"+level.String(), func(b *testing.B) {
 			config := &Config{
 				Level: level,
 				Console: ConsoleConfig{
@@ -441,7 +454,7 @@ func BenchmarkConfig_Validate_WithDifferentLevels(b *testing.B) {
 				},
 				File: FileConfig{
 					Enabled: true,
-					Path:    "/tmp/logs/bench_" + level + ".log",
+					Path:    "/tmp/logs/bench_" + level.String() + ".log",
 					MaxSize: 10485760,
 				},
 			}
@@ -472,7 +485,7 @@ func BenchmarkConfig_CreationAndValidation(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		config := &Config{
-			Level: "info",
+			Level: handler.InfoLevel,
 			Console: ConsoleConfig{
 				Enabled: true,
 				Colored: true,
@@ -497,7 +510,7 @@ func BenchmarkConfig_Validate_MemoryUsage(b *testing.B) {
 	b.ReportAllocs()
 
 	config := &Config{
-		Level: "info",
+		Level: handler.InfoLevel,
 		Console: ConsoleConfig{
 			Enabled: true,
 			Colored: true,
@@ -527,7 +540,7 @@ func BenchmarkConfig_Validate_MemoryUsage(b *testing.B) {
 func BenchmarkConfig_Validate_WorstCase(b *testing.B) {
 	// Worst case: invalid config that triggers all validation checks
 	config := &Config{
-		Level: "invalid_level",
+		Level: handler.Level(99), // Invalid level
 		Console: ConsoleConfig{
 			Enabled: false,
 		},
@@ -565,7 +578,7 @@ func BenchmarkConfig_Validate_FilePathVariations(b *testing.B) {
 	for i, path := range paths {
 		b.Run("Path_"+string(rune('A'+i)), func(b *testing.B) {
 			config := &Config{
-				Level: "info",
+				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
 					Enabled: false,
 				},
@@ -611,7 +624,7 @@ func BenchmarkConfig_Validate_MaxSizeVariations(b *testing.B) {
 
 		b.Run("MaxSize_"+sizeName, func(b *testing.B) {
 			config := &Config{
-				Level: "info",
+				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
 					Enabled: false,
 				},

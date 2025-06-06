@@ -1,12 +1,8 @@
 package log
 
 import (
-	"os"
-	"path/filepath"
-
 	"go.fork.vn/config"
 	"go.fork.vn/di"
-	"go.fork.vn/log/handler"
 )
 
 // ServiceProvider triển khai interface di.ServiceProvider cho các dịch vụ logging.
@@ -73,59 +69,8 @@ func (p *ServiceProvider) Register(app di.Application) {
 		panic("invalid log config: " + err.Error())
 	}
 
-	// Tạo log manager mới
-	manager := NewManager()
-
-	// Thêm handlers dựa trên configuration
-	if logConfig.Console.Enabled {
-		consoleHandler := handler.NewConsoleHandler(logConfig.Console.Colored)
-		manager.AddHandler("console", consoleHandler)
-	}
-
-	if logConfig.File.Enabled && logConfig.File.Path != "" {
-		// Đảm bảo thư mục log tồn tại
-		logDir := filepath.Dir(logConfig.File.Path)
-
-		// Sử dụng absolute path hoặc current working directory
-		if !filepath.IsAbs(logConfig.File.Path) {
-			// Nếu path là relative, sử dụng working directory
-			workDir, _ := os.Getwd()
-			logConfig.File.Path = filepath.Join(workDir, logConfig.File.Path)
-			logDir = filepath.Dir(logConfig.File.Path)
-		}
-
-		if _, err := os.Stat(logDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(logDir, 0755); err != nil {
-				panic("failed to create log directory: " + err.Error())
-			}
-		}
-
-		fileHandler, err := handler.NewFileHandler(logConfig.File.Path, logConfig.File.MaxSize)
-		if err != nil {
-			panic("failed to create file handler: " + err.Error())
-		}
-		manager.AddHandler("file", fileHandler)
-	}
-
-	if logConfig.Stack.Enabled {
-		stackHandler := handler.NewStackHandler()
-
-		// Thêm sub-handlers cho stack
-		if logConfig.Stack.Handlers.Console {
-			consoleHandler := handler.NewConsoleHandler(logConfig.Console.Colored)
-			stackHandler.AddHandler(consoleHandler)
-		}
-
-		if logConfig.Stack.Handlers.File && logConfig.File.Path != "" {
-			fileHandler, err := handler.NewFileHandler(logConfig.File.Path, logConfig.File.MaxSize)
-			if err != nil {
-				panic("failed to create stack file handler: " + err.Error())
-			}
-			stackHandler.AddHandler(fileHandler)
-		}
-
-		manager.AddHandler("stack", stackHandler)
-	}
+	// Tạo log manager mới với config
+	manager := NewManager(logConfig)
 
 	// Đăng ký log manager trong container
 	c.Instance("log", manager) // Dịch vụ logging chung

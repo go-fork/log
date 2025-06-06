@@ -1,4 +1,4 @@
-# Release Notes - v0.1.4
+# Release Notes - v0.1.5
 
 ## Overview
 Brief description of this release and its main purpose.
@@ -56,8 +56,8 @@ Thanks to all contributors who made this release possible:
 - @contributor2
 
 ## Download
-- Source code: [go.fork.vn/log@v0.1.4]
-- Documentation: [pkg.go.dev/go.fork.vn/log@v0.1.4]
+- Source code: [go.fork.vn/log@v0.1.5]
+- Documentation: [pkg.go.dev/go.fork.vn/log@v0.1.5]
 
 ---
-Release Date: 2025-06-04
+Release Date: 2025-06-07
