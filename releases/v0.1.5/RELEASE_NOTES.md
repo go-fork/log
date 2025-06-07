@@ -1,7 +1,7 @@
 # Release Notes - v0.1.5
 
 ## Overview
-This release focuses on enhanced file handler validation, security improvements, and test infrastructure consistency. The main changes include stricter directory validation requirements and comprehensive test naming standardization.
+This release focuses on enhanced file handler validation, security improvements, CI/CD pipeline fixes, and test infrastructure consistency. The main changes include stricter directory validation requirements, comprehensive CI/CD issue resolution, and test naming standardization.
 
 ## What's New
 ### 🔒 Security Enhancements
@@ -14,10 +14,24 @@ This release focuses on enhanced file handler validation, security improvements,
 - Enhanced error handling for file system operations during validation
 - Improved DefaultConfig to set File.Enabled: false by default for safer defaults
 
+### 🚀 CI/CD Pipeline Fixes
+- Fixed staticcheck SA9003 empty branch warning in `config.go`
+- Fixed errcheck warnings for unchecked `os.Chmod` calls in test files
+- Upgraded GitHub Actions cache from v3 to v4 to resolve module caching issues
+- Enhanced test directory setup for CI environment compatibility
+- Improved go.mod/go.sum consistency for CI environments
+
 ### 🔧 Improvements
 - Updated Config.Validate() to always check File.Path regardless of File.Enabled status
 - Enhanced error messages with specific validation failures
 - Improved file handler initialization with detailed permission checks
+
+### 🧪 Test Infrastructure Enhancements
+- Converted all test case names to snake_case format for consistency
+- Added proper directory creation for CI/CD test environments
+- Created `storages/log/` directory structure for default configuration tests
+- Enhanced test coverage for file handler edge cases and error conditions
+- Improved benchmark test naming conventions with comprehensive validation scenarios
 
 ### 📚 Documentation
 - Updated configuration documentation to reflect new validation behavior

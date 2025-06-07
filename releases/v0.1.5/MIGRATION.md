@@ -60,25 +60,62 @@ config := log.DefaultConfig()
 // You must explicitly enable file logging:
 config.File.Enabled = true
 config.File.Path = "/path/to/log/file.log"
-```
-    Field1 string
-    Field2 int64 // Changed from int
-    Field3 bool  // New field
+
+// And ensure the directory exists:
+logDir := filepath.Dir(config.File.Path)
+if err := os.MkdirAll(logDir, 0755); err != nil {
+    log.Fatal("Failed to create log directory:", err)
 }
 ```
 
-### Configuration Changes
-If you're using configuration files:
+### Service Provider Registration
+If you're using the ServiceProvider with Fork Framework:
 
-```yaml
-# Old configuration format
-old_setting: value
-deprecated_option: true
+#### Before (v0.1.4 and earlier)
+```go
+// ServiceProvider would automatically create directories
+provider := log.NewServiceProvider()
+provider.Register(app)
+```
 
-# New configuration format
-new_setting: value
-# deprecated_option removed
-new_option: false
+#### After (v0.1.5)
+```go
+// Ensure log directories exist before registration
+config := log.DefaultConfig()
+if config.File.Enabled {
+    logDir := filepath.Dir(config.File.Path)
+    if err := os.MkdirAll(logDir, 0755); err != nil {
+        log.Fatal("Failed to create log directory:", err)
+    }
+}
+
+provider := log.NewServiceProvider()
+provider.Register(app)
+```
+
+## Validation Changes
+File path validation now always occurs regardless of the `File.Enabled` setting.
+
+### Before (v0.1.4 and earlier)
+```go
+config := &log.Config{
+    File: log.FileConfig{
+        Enabled: false,
+        Path:    "/invalid/path", // This was ignored if Enabled was false
+    },
+}
+err := config.Validate() // No error
+```
+
+### After (v0.1.5)
+```go
+config := &log.Config{
+    File: log.FileConfig{
+        Enabled: false,
+        Path:    "/invalid/path", // This will now be validated even if Enabled is false
+    },
+}
+err := config.Validate() // Will return error if directory doesn't exist
 ```
 
 ## Step-by-Step Migration

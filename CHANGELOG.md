@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## v0.1.5 - 2025-06-07
+
 ### Changed
 - **Configuration Architecture Update**
   - Modified `DefaultConfig()` to set `File.Enabled: false` by default
