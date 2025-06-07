@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Changed
+- **Default Configuration Architecture**
+  - Modified `DefaultConfig()` to use empty file path by default
+  - Updated `File.Enabled` to `false` by default for better security
+  - Enhanced validation logic to only require file path when file handler is actually used
+  - Improved separation between default configuration and user-specific settings
+
+### Fixed
+- **Repository Structure**
+  - Removed dependency on hardcoded `storages/log/app.log` directory structure
+  - Tests now skip gracefully when required directories don't exist instead of creating them
+  - Enhanced test portability by using `t.TempDir()` for temporary test directories
+  - Eliminated repository pollution with unnecessary directory structures
+
+### Improved
+- **Test Infrastructure**
+  - Enhanced test reliability by removing hardcoded directory dependencies
+  - Better error handling when directories don't exist (skip vs fail)
+  - More portable test suite that works across different environments
+  - Cleaner repository structure without test artifacts
+
 ## v0.1.5 - 2025-06-07
 
 ### Changed
