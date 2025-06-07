@@ -257,22 +257,29 @@ func (m *manager) GetLogger(context string) Logger {
 	// Thiết lập Level từ config
 	logger.SetMinLevel(m.config.Level)
 
-	// Thêm handlers theo cấu hình được bật
-	if m.config.Console.Enabled {
-		if consoleHandler := m.handlers[HandlerTypeConsole]; consoleHandler != nil {
-			logger.AddHandler(HandlerTypeConsole, consoleHandler)
-		}
-	}
-
-	if m.config.File.Enabled {
-		if fileHandler := m.handlers[HandlerTypeFile]; fileHandler != nil {
-			logger.AddHandler(HandlerTypeFile, fileHandler)
-		}
-	}
-
+	// Bước 1: Luôn thêm Stack Handler nếu được enable
 	if m.config.Stack.Enabled {
 		if stackHandler := m.handlers[HandlerTypeStack]; stackHandler != nil {
 			logger.AddHandler(HandlerTypeStack, stackHandler)
+		}
+	}
+
+	// Bước 2: Chỉ thêm individual handlers khi cần thiết
+	// Console: Chỉ thêm khi Stack không enable HOẶC Stack không có console
+	if !m.config.Stack.Enabled || (m.config.Console.Enabled && !m.config.Stack.Handlers.Console) {
+		if m.config.Console.Enabled {
+			if consoleHandler := m.handlers[HandlerTypeConsole]; consoleHandler != nil {
+				logger.AddHandler(HandlerTypeConsole, consoleHandler)
+			}
+		}
+	}
+
+	// File: Chỉ thêm khi Stack không enable HOẶC Stack không có file
+	if !m.config.Stack.Enabled || (m.config.File.Enabled && !m.config.Stack.Handlers.File) {
+		if m.config.File.Enabled {
+			if fileHandler := m.handlers[HandlerTypeFile]; fileHandler != nil {
+				logger.AddHandler(HandlerTypeFile, fileHandler)
+			}
 		}
 	}
 
@@ -334,10 +341,17 @@ func (m *manager) initializeHandlers() {
 	}
 
 	m.handlers[HandlerTypeFile] = fileHandler
-	// Bắt buộc khởi tạo Stack Handler
+	// Khởi tạo Stack Handler với cấu hình
 	stackHandler := handler.NewStackHandler()
-	stackHandler.AddHandler(consoleHandler)
-	stackHandler.AddHandler(fileHandler)
+
+	// Chỉ thêm handlers vào stack khi được cấu hình
+	if m.config.Stack.Handlers.Console {
+		stackHandler.AddHandler(consoleHandler)
+	}
+
+	if m.config.Stack.Handlers.File {
+		stackHandler.AddHandler(fileHandler)
+	}
 
 	m.handlers[HandlerTypeStack] = stackHandler
 }

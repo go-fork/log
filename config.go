@@ -15,56 +15,56 @@ import (
 type Config struct {
 	// Level xác định mức độ log tối thiểu sẽ được ghi.
 	// Các giá trị hợp lệ: DebugLevel, InfoLevel, WarningLevel, ErrorLevel, FatalLevel
-	Level handler.Level `yaml:"level" json:"level"`
+	Level handler.Level `mapstructure:"level" yaml:"level" json:"level"`
 
 	// Console cấu hình cho console handler
-	Console ConsoleConfig `yaml:"console" json:"console"`
+	Console ConsoleConfig `mapstructure:"console" yaml:"console" json:"console"`
 
 	// File cấu hình cho file handler
-	File FileConfig `yaml:"file" json:"file"`
+	File FileConfig `mapstructure:"file" yaml:"file" json:"file"`
 
 	// Stack cấu hình cho stack handler
-	Stack StackConfig `yaml:"stack" json:"stack"`
+	Stack StackConfig `mapstructure:"stack" yaml:"stack" json:"stack"`
 }
 
 // ConsoleConfig định nghĩa cấu hình cho console handler.
 type ConsoleConfig struct {
 	// Enabled bật/tắt console handler
-	Enabled bool `yaml:"enabled" json:"enabled"`
+	Enabled bool `mapstructure:"enabled" yaml:"enabled" json:"enabled"`
 
 	// Colored bật/tắt màu sắc cho console output
-	Colored bool `yaml:"colored" json:"colored"`
+	Colored bool `mapstructure:"colored" yaml:"colored" json:"colored"`
 }
 
 // FileConfig định nghĩa cấu hình cho file handler.
 type FileConfig struct {
 	// Enabled bật/tắt file handler
-	Enabled bool `yaml:"enabled" json:"enabled"`
+	Enabled bool `mapstructure:"enabled" yaml:"enabled" json:"enabled"`
 
 	// Path đường dẫn file log
-	Path string `yaml:"path" json:"path"`
+	Path string `mapstructure:"path" yaml:"path" json:"path"`
 
 	// MaxSize kích thước tối đa của file log (bytes) trước khi rotate
 	// 0 = không giới hạn
-	MaxSize int64 `yaml:"max_size" json:"max_size"`
+	MaxSize int64 `mapstructure:"max_size" yaml:"max_size" json:"max_size"`
 }
 
 // StackConfig định nghĩa cấu hình cho stack handler.
 type StackConfig struct {
 	// Enabled bật/tắt stack handler
-	Enabled bool `yaml:"enabled" json:"enabled"`
+	Enabled bool `mapstructure:"enabled" yaml:"enabled" json:"enabled"`
 
 	// Handlers cấu hình các sub-handlers
-	Handlers StackHandlers `yaml:"handlers" json:"handlers"`
+	Handlers StackHandlers `mapstructure:"handlers" yaml:"handlers" json:"handlers"`
 }
 
 // StackHandlers định nghĩa cấu hình các handler trong stack.
 type StackHandlers struct {
 	// Console bật/tắt console handler trong stack
-	Console bool `yaml:"console" json:"console"`
+	Console bool `mapstructure:"console" yaml:"console" json:"console"`
 
 	// File bật/tắt file handler trong stack
-	File bool `yaml:"file" json:"file"`
+	File bool `mapstructure:"file" yaml:"file" json:"file"`
 }
 
 // DefaultConfig trả về cấu hình mặc định cho log package.

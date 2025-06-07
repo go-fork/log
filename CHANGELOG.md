@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## v0.1.7 - 2025-06-07
+
+### Fixed
+- **Stack Handler Duplicate Logging Issue**
+  - Fixed critical bug where logs were duplicated when both individual handlers and stack handler were enabled
+  - Enhanced `initializeHandlers()` to respect stack handler configuration instead of always adding all handlers
+  - Stack handler now only includes handlers that are explicitly configured in `stack.handlers`
+  - Improved handler logic in `GetLogger()` to prevent duplication between individual and stack handlers
+
+### Improved
+- **Handler Logic Optimization**
+  - Implemented smart handler selection logic to avoid duplicate outputs
+  - Added conditional handler addition: individual handlers are only added when not already covered by stack handler
+  - Enhanced stack handler configuration to be more granular and predictable
+  - Better separation of concerns between individual handlers and composite stack handler
+
+### Technical Details
+- **Stack Handler Configuration**: Now respects `stack.handlers.console` and `stack.handlers.file` settings
+- **Anti-Duplication Logic**: Individual handlers are only added when `!stack.enabled || !stack.handlers.[type]`
+- **Configuration Priority**: Stack handler acts as a composite handler that can replace individual handlers
+- **Backward Compatibility**: All existing configurations continue to work with improved behavior
+
 ## v0.1.6 - 2025-06-07
 
 ### Changed

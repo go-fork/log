@@ -51,34 +51,43 @@ type FileHandler struct {
 //	    fmt.Printf("Không thể tạo file log: %v\n", err)
 //	}
 func NewFileHandler(path string, maxSize int64) (*FileHandler, error) {
-	// Kiểm tra thư mục cha có tồn tại không
-	dir := filepath.Dir(path)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("path to folder do not exists: %s", dir)
-	} else if err != nil {
-		return nil, fmt.Errorf("cannot access directory: %w", err)
-	}
+	var file *os.File
+	var currentSize int64
 
-	// Kiểm tra quyền ghi vào thư mục bằng cách tạo file test
-	testFile := filepath.Join(dir, ".write_test")
-	testFileHandle, err := os.Create(testFile)
-	if err != nil {
-		return nil, fmt.Errorf("directory does not have write permission: %s", dir)
-	}
-	testFileHandle.Close()
-	os.Remove(testFile) // Dọn dẹp file test
+	// Kiểm tra xem file path có tồn tại không
+	if info, err := os.Stat(path); err == nil {
+		// 1. Path tồn tại - thử mở file với quyền ghi thêm để kiểm tra có ghi được không
+		file, err = os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("cannot open existing file for writing: %w", err)
+		}
+		currentSize = info.Size()
+	} else if os.IsNotExist(err) {
+		// 2. Path không tồn tại - kiểm tra parent directory
+		dir := filepath.Dir(path)
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			return nil, fmt.Errorf("path to folder do not exists: %s", dir)
+		} else if err != nil {
+			return nil, fmt.Errorf("cannot access parent directory: %w", err)
+		}
 
-	// Mở file log để ghi thêm
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return nil, fmt.Errorf("không thể mở file log: %w", err)
-	}
-
-	// Lấy kích thước file hiện tại
-	info, err := file.Stat()
-	if err != nil {
-		file.Close()
-		return nil, fmt.Errorf("không thể lấy thông tin file log: %w", err)
+		// 3. Parent directory tồn tại - thử tạo file với quyền ghi
+		file, err = os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			// Kiểm tra nếu lỗi là do permission denied
+			if os.IsPermission(err) {
+				return nil, fmt.Errorf("directory does not have write permission: %s", dir)
+			}
+			return nil, fmt.Errorf("cannot create file: %w", err)
+		}
+		currentSize = 0
+	} else {
+		// Lỗi khác khi kiểm tra file (có thể là permission denied)
+		if os.IsPermission(err) {
+			dir := filepath.Dir(path)
+			return nil, fmt.Errorf("directory does not have write permission: %s", dir)
+		}
+		return nil, fmt.Errorf("cannot access file path: %w", err)
 	}
 
 	// Khởi tạo handler
@@ -86,7 +95,7 @@ func NewFileHandler(path string, maxSize int64) (*FileHandler, error) {
 		path:        path,
 		file:        file,
 		maxSize:     maxSize,
-		currentSize: info.Size(),
+		currentSize: currentSize,
 	}
 
 	return handler, nil
