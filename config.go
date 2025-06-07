@@ -72,7 +72,7 @@ type StackHandlers struct {
 // Cấu hình mặc định sử dụng:
 //   - Level: InfoLevel
 //   - Console handler được bật với màu sắc
-//   - File handler được bật với path mặc định "storages/log/app.log"
+//   - File handler được tắt (path rỗng)
 //   - Stack handler được tắt
 //
 // Trả về:
@@ -86,7 +86,7 @@ func DefaultConfig() *Config {
 		},
 		File: FileConfig{
 			Enabled: false,
-			Path:    "storages/log/app.log",
+			Path:    "", // Empty path - user must set this explicitly
 			MaxSize: 10 * 1024 * 1024, // 10MB
 		},
 		Stack: StackConfig{
@@ -136,20 +136,23 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// Validate file handler path - luôn kiểm tra vì theo kiến trúc mới tất cả handlers đều được khởi tạo
-	if c.File.Path == "" {
+	// Validate file handler path - chỉ yêu cầu khi file handler được sử dụng
+	needsFilePath := c.File.Enabled || (c.Stack.Enabled && c.Stack.Handlers.File)
+	if needsFilePath && c.File.Path == "" {
 		return &ConfigError{
 			Field:   "file.path",
 			Message: "path is required for file handler initialization",
 		}
 	}
 
-	// Kiểm tra và tạo thư mục log nếu cần
-	if err := c.validateAndCreateLogDir(c.File.Path); err != nil {
-		return &ConfigError{
-			Field:   "file.path",
-			Value:   c.File.Path,
-			Message: "log directory validation failed: " + err.Error(),
+	// Kiểm tra thư mục log nếu có path
+	if c.File.Path != "" {
+		if err := c.validateAndCreateLogDir(c.File.Path); err != nil {
+			return &ConfigError{
+				Field:   "file.path",
+				Value:   c.File.Path,
+				Message: "log directory validation failed: " + err.Error(),
+			}
 		}
 	}
 
