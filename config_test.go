@@ -14,12 +14,12 @@ func TestConfig_Validate(t *testing.T) {
 		expectedErr string
 	}{
 		{
-			name:        "Valid default config",
+			name:        "valid_default_config",
 			config:      DefaultConfig(),
 			expectedErr: "",
 		},
 		{
-			name: "Invalid log level",
+			name: "invalid_log_level",
 			config: &Config{
 				Level: handler.Level(99), // Invalid level
 				Console: ConsoleConfig{
@@ -29,7 +29,7 @@ func TestConfig_Validate(t *testing.T) {
 			expectedErr: "invalid log level",
 		},
 		{
-			name: "No handlers enabled",
+			name: "no_handlers_enabled",
 			config: &Config{
 				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
@@ -45,7 +45,7 @@ func TestConfig_Validate(t *testing.T) {
 			expectedErr: "at least one handler must be enabled",
 		},
 		{
-			name: "File handler enabled without path",
+			name: "file_handler_enabled_without_path",
 			config: &Config{
 				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
@@ -53,16 +53,16 @@ func TestConfig_Validate(t *testing.T) {
 				},
 				File: FileConfig{
 					Enabled: true,
-					Path:    "",
+					Path:    "", // Để trống để test validation
 				},
 				Stack: StackConfig{
 					Enabled: false,
 				},
 			},
-			expectedErr: "path is required when file handler is enabled",
+			expectedErr: "path is required for file handler initialization",
 		},
 		{
-			name: "File handler with negative max size",
+			name: "file_handler_with_negative_max_size",
 			config: &Config{
 				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
@@ -80,7 +80,7 @@ func TestConfig_Validate(t *testing.T) {
 			expectedErr: "max_size must be non-negative",
 		},
 		{
-			name: "Stack handler enabled without sub-handlers",
+			name: "stack_handler_enabled_without_sub_handlers",
 			config: &Config{
 				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
@@ -88,6 +88,7 @@ func TestConfig_Validate(t *testing.T) {
 				},
 				File: FileConfig{
 					Enabled: false,
+					Path:    "/tmp/logs", // Cần có path hợp lệ vì luôn được kiểm tra
 				},
 				Stack: StackConfig{
 					Enabled: true,
@@ -100,7 +101,7 @@ func TestConfig_Validate(t *testing.T) {
 			expectedErr: "stack handler must have at least one sub-handler enabled",
 		},
 		{
-			name: "Stack handler with file sub-handler but no file path",
+			name: "stack_handler_with_file_sub_handler_but_no_file_path",
 			config: &Config{
 				Level: handler.InfoLevel,
 				Console: ConsoleConfig{
@@ -108,7 +109,7 @@ func TestConfig_Validate(t *testing.T) {
 				},
 				File: FileConfig{
 					Enabled: false,
-					Path:    "",
+					Path:    "", // Để trống để test validation
 				},
 				Stack: StackConfig{
 					Enabled: true,
@@ -118,10 +119,10 @@ func TestConfig_Validate(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: "path is required when file handler is used in stack",
+			expectedErr: "path is required for file handler initialization",
 		},
 		{
-			name: "Valid config with all features enabled",
+			name: "valid_config_with_all_features_enabled",
 			config: &Config{
 				Level: handler.DebugLevel,
 				Console: ConsoleConfig{
@@ -165,9 +166,9 @@ func TestConfig_DefaultConfig(t *testing.T) {
 	assert.Equal(t, handler.InfoLevel, config.Level)
 	assert.True(t, config.Console.Enabled)
 	assert.True(t, config.Console.Colored)
-	assert.False(t, config.File.Enabled)
-	assert.Empty(t, config.File.Path)
-	assert.Equal(t, int64(0), config.File.MaxSize)
+	assert.False(t, config.File.Enabled) // Mặc định File.Enabled = false
+	assert.Equal(t, "storages/log/app.log", config.File.Path)
+	assert.Equal(t, int64(10*1024*1024), config.File.MaxSize) // 10MB
 	assert.False(t, config.Stack.Enabled)
 	assert.False(t, config.Stack.Handlers.Console)
 	assert.False(t, config.Stack.Handlers.File)
@@ -210,6 +211,10 @@ func TestConfig_ValidateAllLogLevels(t *testing.T) {
 				Console: ConsoleConfig{
 					Enabled: true,
 				},
+				File: FileConfig{
+					Enabled: false,
+					Path:    "/tmp/test-logs/app.log", // Cần có path hợp lệ
+				},
 			}
 
 			err := config.Validate()
@@ -225,17 +230,17 @@ func TestConfig_ValidateFileHandlerConfigurations(t *testing.T) {
 		expectedErr bool
 	}{
 		{
-			name:        "Zero max size (unlimited)",
+			name:        "zero_max_size_unlimited",
 			maxSize:     0,
 			expectedErr: false,
 		},
 		{
-			name:        "Positive max size",
+			name:        "positive_max_size",
 			maxSize:     1024 * 1024, // 1MB
 			expectedErr: false,
 		},
 		{
-			name:        "Negative max size",
+			name:        "negative_max_size",
 			maxSize:     -100,
 			expectedErr: true,
 		},
@@ -613,16 +618,16 @@ func BenchmarkConfig_Validate_MaxSizeVariations(b *testing.B) {
 		sizeName := ""
 		switch {
 		case maxSize == 0:
-			sizeName = "Unlimited"
+			sizeName = "unlimited"
 		case maxSize < 1048576:
-			sizeName = "KB"
+			sizeName = "kb"
 		case maxSize < 1073741824:
-			sizeName = "MB"
+			sizeName = "mb"
 		default:
-			sizeName = "GB"
+			sizeName = "gb"
 		}
 
-		b.Run("MaxSize_"+sizeName, func(b *testing.B) {
+		b.Run("max_size_"+sizeName, func(b *testing.B) {
 			config := &Config{
 				Level: handler.InfoLevel,
 				Console: ConsoleConfig{

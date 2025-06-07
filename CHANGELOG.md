@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+### Changed
+- **Configuration Architecture Update**
+  - Modified `DefaultConfig()` to set `File.Enabled: false` by default
+  - Updated validation logic to always check `File.Path` regardless of `File.Enabled` status
+  - Enhanced `Config.Validate()` to ensure log directory creation and write permissions
+  - Improved error messages for file handler initialization requirements
+
+- **FileHandler Security Enhancement**
+  - Modified `NewFileHandler()` to require existing directories with write permissions
+  - Removed automatic directory creation for security and explicit control
+  - Enhanced directory validation with specific error messages
+  - Added comprehensive write permission testing before file handler initialization
+
+### Fixed
+- **Directory Creation and Permissions**
+  - Fixed automatic log directory creation when path doesn't exist
+  - Added write permission validation for log directories
+  - Enhanced error handling for file system operations during validation
+
+### Added
+- **Enhanced Test Coverage**
+  - Added test cases for non-existent directory scenarios
+  - Added test cases for write permission validation
+  - Added test cases for directory access errors
+  - Improved error message validation in tests
+
 ## v0.1.4 - 2025-06-07
 
 ### Added

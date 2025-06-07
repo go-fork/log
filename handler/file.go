@@ -11,11 +11,15 @@ import (
 // FileHandler triển khai một log handler ghi vào file với khả năng xoay vòng.
 //
 // Tính năng:
-//   - Tự động tạo file
+//   - Kiểm tra thư mục tồn tại và quyền ghi trước khi khởi tạo
 //   - Xoay vòng log dựa trên kích thước
 //   - Đặt tên file xoay vòng dựa trên timestamp
 //   - Hoạt động thread-safe
 //   - Định dạng timestamp chuẩn
+//
+// Yêu cầu:
+//   - Thư mục chứa file log phải tồn tại trước
+//   - Thư mục phải có quyền ghi
 type FileHandler struct {
 	path        string     // Đường dẫn đến file log
 	file        *os.File   // File handle hiện tại
@@ -32,7 +36,12 @@ type FileHandler struct {
 //
 // Trả về:
 //   - *FileHandler: một file handler đã được cấu hình
-//   - error: nếu file hoặc thư mục không thể được tạo/mở
+//   - error: nếu thư mục không tồn tại, không có quyền ghi, hoặc file không thể được mở
+//
+// Lưu ý:
+//   - Thư mục chứa file log phải tồn tại trước khi gọi hàm này
+//   - Thư mục phải có quyền ghi
+//   - Hàm không tự động tạo thư mục
 //
 // Ví dụ:
 //
@@ -42,11 +51,22 @@ type FileHandler struct {
 //	    fmt.Printf("Không thể tạo file log: %v\n", err)
 //	}
 func NewFileHandler(path string, maxSize int64) (*FileHandler, error) {
-	// Tạo cấu trúc thư mục nếu cần
+	// Kiểm tra thư mục cha có tồn tại không
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, fmt.Errorf("không thể tạo thư mục log: %w", err)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("path to folder do not exists: %s", dir)
+	} else if err != nil {
+		return nil, fmt.Errorf("cannot access directory: %w", err)
 	}
+
+	// Kiểm tra quyền ghi vào thư mục bằng cách tạo file test
+	testFile := filepath.Join(dir, ".write_test")
+	testFileHandle, err := os.Create(testFile)
+	if err != nil {
+		return nil, fmt.Errorf("directory does not have write permission: %s", dir)
+	}
+	testFileHandle.Close()
+	os.Remove(testFile) // Dọn dẹp file test
 
 	// Mở file log để ghi thêm
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)

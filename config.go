@@ -1,6 +1,12 @@
 package log
 
-import "go.fork.vn/log/handler"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"go.fork.vn/log/handler"
+)
 
 // Config định nghĩa cấu hình cho log package.
 //
@@ -66,7 +72,8 @@ type StackHandlers struct {
 // Cấu hình mặc định sử dụng:
 //   - Level: InfoLevel
 //   - Console handler được bật với màu sắc
-//   - File và Stack handlers được tắt
+//   - File handler được bật với path mặc định "storages/log/app.log"
+//   - Stack handler được tắt
 //
 // Trả về:
 //   - *Config: Cấu hình mặc định
@@ -79,8 +86,8 @@ func DefaultConfig() *Config {
 		},
 		File: FileConfig{
 			Enabled: false,
-			Path:    "",
-			MaxSize: 0,
+			Path:    "storages/log/app.log",
+			MaxSize: 10 * 1024 * 1024, // 10MB
 		},
 		Stack: StackConfig{
 			Enabled: false,
@@ -98,6 +105,7 @@ func DefaultConfig() *Config {
 //   - Level có hợp lệ không
 //   - Các handler có được cấu hình đúng không
 //   - File handler có path hợp lệ không khi được bật
+//   - Thư mục log có tồn tại và có quyền ghi không
 //   - Stack handler có ít nhất một sub-handler được bật không
 //
 // Trả về:
@@ -128,21 +136,34 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	// Validate file handler path - luôn kiểm tra vì theo kiến trúc mới tất cả handlers đều được khởi tạo
+	if c.File.Path == "" {
+		return &ConfigError{
+			Field:   "file.path",
+			Message: "path is required for file handler initialization",
+		}
+	}
+
+	// Kiểm tra và tạo thư mục log nếu cần
+	if err := c.validateAndCreateLogDir(c.File.Path); err != nil {
+		return &ConfigError{
+			Field:   "file.path",
+			Value:   c.File.Path,
+			Message: "log directory validation failed: " + err.Error(),
+		}
+	}
+
+	if c.File.MaxSize < 0 {
+		return &ConfigError{
+			Field:   "file.max_size",
+			Value:   string(rune(c.File.MaxSize)),
+			Message: "max_size must be non-negative (0 for unlimited)",
+		}
+	}
+
 	// Validate file handler nếu được bật
 	if c.File.Enabled {
-		if c.File.Path == "" {
-			return &ConfigError{
-				Field:   "file.path",
-				Message: "path is required when file handler is enabled",
-			}
-		}
-		if c.File.MaxSize < 0 {
-			return &ConfigError{
-				Field:   "file.max_size",
-				Value:   string(rune(c.File.MaxSize)),
-				Message: "max_size must be non-negative (0 for unlimited)",
-			}
-		}
+		// Các validation bổ sung khi file handler được bật (nếu cần)
 	}
 
 	// Validate stack handler nếu được bật
@@ -154,16 +175,44 @@ func (c *Config) Validate() error {
 			}
 		}
 
-		// Nếu stack có file handler được bật, file handler chính cũng phải có cấu hình hợp lệ
-		if c.Stack.Handlers.File {
-			if c.File.Path == "" {
-				return &ConfigError{
-					Field:   "file.path",
-					Message: "path is required when file handler is used in stack",
-				}
-			}
-		}
+		// File.Path đã được kiểm tra ở trên, không cần kiểm tra lại
 	}
+
+	return nil
+}
+
+// validateAndCreateLogDir kiểm tra thư mục log có tồn tại và có quyền ghi không.
+//
+// Phương thức này:
+//   - Kiểm tra thư mục cha của file log có tồn tại không
+//   - Kiểm tra quyền ghi vào thư mục
+//   - KHÔNG tự động tạo thư mục
+//
+// Tham số:
+//   - logPath: Đường dẫn file log
+//
+// Trả về:
+//   - error: Lỗi nếu thư mục không tồn tại hoặc không có quyền ghi
+func (c *Config) validateAndCreateLogDir(logPath string) error {
+	// Lấy thư mục cha của file log
+	logDir := filepath.Dir(logPath)
+
+	// Kiểm tra thư mục có tồn tại không
+	if _, err := os.Stat(logDir); os.IsNotExist(err) {
+		return fmt.Errorf("path to folder do not exists: %s", logDir)
+	} else if err != nil {
+		// Lỗi khác khi stat thư mục
+		return fmt.Errorf("cannot access directory: %w", err)
+	}
+
+	// Kiểm tra quyền ghi bằng cách tạo file tạm thời
+	testFile := filepath.Join(logDir, ".log_write_test")
+	file, err := os.Create(testFile)
+	if err != nil {
+		return fmt.Errorf("directory does not have write permission: %s", logDir)
+	}
+	file.Close()
+	os.Remove(testFile)
 
 	return nil
 }

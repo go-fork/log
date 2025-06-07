@@ -87,7 +87,7 @@ func TestServiceProvider_Boot(t *testing.T) {
 		expectPanic bool
 	}{
 		{
-			name: "valid application with log binding",
+			name: "valid_application_with_log_binding",
 			setupMocks: func() di.Application {
 				mockApp, container := setupMockApplication(t)
 				config := createTestConfigForProvider()
@@ -97,14 +97,14 @@ func TestServiceProvider_Boot(t *testing.T) {
 			expectPanic: false,
 		},
 		{
-			name: "nil application",
+			name: "nil_application",
 			setupMocks: func() di.Application {
 				return nil
 			},
 			expectPanic: true,
 		},
 		{
-			name: "application with nil container",
+			name: "application_with_nil_container",
 			setupMocks: func() di.Application {
 				mockApp := diMocks.NewMockApplication(t)
 				mockApp.On("Container").Return(nil).Maybe()
@@ -319,7 +319,7 @@ func TestServiceProvider_RegisterWithInvalidInputs(t *testing.T) {
 		description string
 	}{
 		{
-			name: "nil application",
+			name: "nil_application",
 			setupMocks: func() (di.Application, di.Container) {
 				return nil, nil
 			},
@@ -327,7 +327,7 @@ func TestServiceProvider_RegisterWithInvalidInputs(t *testing.T) {
 			description: "ServiceProvider.Register nên panic khi app là nil",
 		},
 		{
-			name: "application with nil container",
+			name: "application_with_nil_container",
 			setupMocks: func() (di.Application, di.Container) {
 				mockApp := diMocks.NewMockApplication(t)
 				mockApp.On("Container").Return(nil).Once()
@@ -337,7 +337,7 @@ func TestServiceProvider_RegisterWithInvalidInputs(t *testing.T) {
 			description: "ServiceProvider.Register nên panic khi container là nil",
 		},
 		{
-			name: "container without config manager",
+			name: "container_without_config_manager",
 			setupMocks: func() (di.Application, di.Container) {
 				mockApp, container := setupMockApplication(t)
 				return mockApp, container
@@ -346,7 +346,7 @@ func TestServiceProvider_RegisterWithInvalidInputs(t *testing.T) {
 			description: "ServiceProvider.Register nên panic khi config manager không tồn tại",
 		},
 		{
-			name: "container with invalid config manager type",
+			name: "container_with_invalid_config_manager_type",
 			setupMocks: func() (di.Application, di.Container) {
 				mockApp, container := setupMockApplication(t)
 				container.Instance("config", "not-a-config-manager")

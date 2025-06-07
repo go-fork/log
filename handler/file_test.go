@@ -59,6 +59,80 @@ func TestFileHandler_New_WithInvalidPath(t *testing.T) {
 	}
 }
 
+// Test với folder không tồn tại
+func TestFileHandler_New_WithNonExistentFolder(t *testing.T) {
+	// Tạo đường dẫn tới folder không tồn tại
+	nonExistentPath := "/tmp/non-existent-folder-12345/app.log"
+
+	h, err := NewFileHandler(nonExistentPath, 100)
+	if err == nil {
+		t.Error("NewFileHandler() với folder không tồn tại nên trả về lỗi")
+		if h != nil {
+			h.Close()
+		}
+		return
+	}
+
+	// Kiểm tra error message có chứa "path to folder do not exists"
+	if !strings.Contains(err.Error(), "path to folder do not exists") {
+		t.Errorf("NewFileHandler() error message không đúng, got = %v, want chứa 'path to folder do not exists'", err.Error())
+	}
+}
+
+// Test với folder không có quyền ghi
+func TestFileHandler_New_WithNoWritePermission(t *testing.T) {
+	// Tạo thư mục tạm với quyền read-only
+	dir := createTempDir(t)
+	defer func() {
+		// Khôi phục quyền để có thể xóa
+		os.Chmod(dir, 0755)
+		os.RemoveAll(dir)
+	}()
+
+	// Set quyền read-only (không có write permission)
+	err := os.Chmod(dir, 0444) // r--r--r--
+	if err != nil {
+		t.Skipf("Không thể thay đổi quyền thư mục: %v", err)
+	}
+
+	logPath := filepath.Join(dir, "readonly-test.log")
+
+	h, err := NewFileHandler(logPath, 100)
+	if err == nil {
+		t.Error("NewFileHandler() với folder read-only nên trả về lỗi")
+		if h != nil {
+			h.Close()
+		}
+		return
+	}
+
+	// Kiểm tra error message có chứa "does not have write permission"
+	if !strings.Contains(err.Error(), "does not have write permission") {
+		t.Errorf("NewFileHandler() error message không đúng, got = %v, want chứa 'does not have write permission'", err.Error())
+	}
+}
+
+// Test với folder tồn tại và có quyền ghi (positive case)
+func TestFileHandler_New_WithValidFolder(t *testing.T) {
+	// Tạo thư mục tạm với quyền ghi
+	dir := createTempDir(t)
+	defer os.RemoveAll(dir)
+
+	logPath := filepath.Join(dir, "valid-test.log")
+
+	h, err := NewFileHandler(logPath, 100)
+	if err != nil {
+		t.Errorf("NewFileHandler() với folder hợp lệ không nên trả về lỗi, got = %v", err)
+		return
+	}
+	defer h.Close()
+
+	// Kiểm tra file đã được tạo
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		t.Error("NewFileHandler() không tạo file log")
+	}
+}
+
 func TestFileHandler_Log(t *testing.T) {
 	// Tạo thư mục tạm thời
 	dir := createTempDir(t)
@@ -426,7 +500,7 @@ func TestFileHandler_EdgeCases(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	// Test với maxSize = 0 (không giới hạn kích thước)
-	t.Run("MaxSize Zero", func(t *testing.T) {
+	t.Run("max_size_zero", func(t *testing.T) {
 		logPath := filepath.Join(dir, "unlimited.log")
 		h, err := NewFileHandler(logPath, 0)
 		if err != nil {
@@ -456,7 +530,7 @@ func TestFileHandler_EdgeCases(t *testing.T) {
 	})
 
 	// Test với đường dẫn tuyệt đối
-	t.Run("Absolute Path", func(t *testing.T) {
+	t.Run("absolute_path", func(t *testing.T) {
 		absPath, err := filepath.Abs(filepath.Join(dir, "abs-path.log"))
 		if err != nil {
 			t.Fatalf("Không thể lấy đường dẫn tuyệt đối: %v", err)
@@ -481,7 +555,7 @@ func TestFileHandler_EdgeCases(t *testing.T) {
 	})
 
 	// Test với nhiều lần đóng
-	t.Run("Multiple Close", func(t *testing.T) {
+	t.Run("multiple_close", func(t *testing.T) {
 		logPath := filepath.Join(dir, "multi-close.log")
 		h, err := NewFileHandler(logPath, 100)
 		if err != nil {
@@ -502,7 +576,7 @@ func TestFileHandler_EdgeCases(t *testing.T) {
 	})
 
 	// Test với tên file có ký tự đặc biệt
-	t.Run("Special Characters", func(t *testing.T) {
+	t.Run("special_characters", func(t *testing.T) {
 		// Một số hệ thống file cho phép các ký tự đặc biệt trong tên file
 		logPath := filepath.Join(dir, "special-chars_#@!.log")
 		h, err := NewFileHandler(logPath, 100)
@@ -589,5 +663,84 @@ func TestFileHandler_New_WithFileOpenError(t *testing.T) {
 		t.Error("NewFileHandler() nên trả về lỗi khi không thể mở file")
 	} else {
 		t.Logf("NewFileHandler() trả về lỗi như mong đợi: %v", err)
+	}
+}
+
+// Test error messages chi tiết
+func TestFileHandler_New_ErrorMessages(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupFunc     func() string
+		expectedError string
+		cleanup       func(string)
+	}{
+		{
+			name: "directory_does_not_exist",
+			setupFunc: func() string {
+				return "/tmp/absolutely-non-existent-folder-xyz/app.log"
+			},
+			expectedError: "path to folder do not exists",
+			cleanup:       func(string) {},
+		},
+		{
+			name: "directory_read_only",
+			setupFunc: func() string {
+				dir := createTempDir(t)
+				os.Chmod(dir, 0444) // read-only
+				return filepath.Join(dir, "readonly.log")
+			},
+			expectedError: "directory does not have write permission",
+			cleanup: func(path string) {
+				dir := filepath.Dir(path)
+				os.Chmod(dir, 0755)
+				os.RemoveAll(dir)
+			},
+		},
+		{
+			name: "valid_directory",
+			setupFunc: func() string {
+				dir := createTempDir(t)
+				return filepath.Join(dir, "valid.log")
+			},
+			expectedError: "",
+			cleanup: func(path string) {
+				dir := filepath.Dir(path)
+				os.RemoveAll(dir)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logPath := tt.setupFunc()
+			defer tt.cleanup(logPath)
+
+			h, err := NewFileHandler(logPath, 100)
+
+			if tt.expectedError == "" {
+				// Expect success
+				if err != nil {
+					t.Errorf("NewFileHandler() với setup hợp lệ không nên lỗi, got = %v", err)
+					return
+				}
+				if h != nil {
+					h.Close()
+				}
+			} else {
+				// Expect error
+				if err == nil {
+					t.Errorf("NewFileHandler() nên trả về lỗi cho test case '%s'", tt.name)
+					if h != nil {
+						h.Close()
+					}
+					return
+				}
+
+				if !strings.Contains(err.Error(), tt.expectedError) {
+					t.Errorf("NewFileHandler() error message không đúng cho test case '%s', got = %v, want chứa '%s'",
+						tt.name, err.Error(), tt.expectedError)
+				}
+			}
+		})
 	}
 }

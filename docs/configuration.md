@@ -400,6 +400,37 @@ func main() {
 }
 ```
 
+### Enhanced Validation Features
+
+Package log thực hiện validation toàn diện với các tính năng mới:
+
+```go
+// 1. Directory Auto-Creation
+// Validation tự động tạo thư mục log nếu chưa tồn tại
+config := &log.Config{
+    File: log.FileConfig{
+        Path: "/var/log/myapp/app.log", // Thư mục được tạo tự động
+    },
+}
+
+// 2. Write Permission Check
+// Validation kiểm tra quyền ghi vào thư mục log
+if err := config.Validate(); err != nil {
+    // Sẽ báo lỗi nếu không có quyền ghi
+    fmt.Printf("Validation failed: %v\n", err)
+}
+
+// 3. Path Always Required
+// File.Path luôn được kiểm tra, bất kể File.Enabled = true/false
+config := &log.Config{
+    File: log.FileConfig{
+        Enabled: false,           // Có thể tắt handler
+        Path:    "logs/app.log",  // Nhưng path vẫn phải có
+    },
+}
+```
+```
+
 ### Common Validation Errors
 
 ```go
@@ -416,15 +447,38 @@ config.Stack.Enabled = false // ❌ Ít nhất một handler phải được b�
 
 // 3. File handler without path
 config.File.Enabled = true
-config.File.Path = "" // ❌ Path không được trống khi file handler được bật
+config.File.Path = "" // ❌ Path luôn được yêu cầu cho file handler initialization
 
-// 4. Negative max size
+// 4. Directory permission issues
+config.File.Path = "/root/logs/app.log" // ❌ Không có quyền ghi vào /root
+config.File.Path = "/tmp/logs/app.log"  // ✅ Có quyền ghi
+
+// 5. Invalid directory path
+config.File.Path = "/invalid/\x00/path.log" // ❌ Path không hợp lệ
+config.File.Path = "/var/log/app.log"        // ✅ Path hợp lệ
+
+// 6. Negative max size
 config.File.MaxSize = -1 // ❌ MaxSize phải >= 0
 
-// 5. Stack handler without sub-handlers
+// 7. Stack handler without sub-handlers
 config.Stack.Enabled = true
 config.Stack.Handlers.Console = false
 config.Stack.Handlers.File = false // ❌ Stack cần ít nhất một sub-handler
+```
+
+### Validation Error Messages
+
+```go
+// Các error messages mới:
+
+// Directory creation failed
+// "log config error in field 'file.path' with value '/invalid/path': log directory validation failed: permission denied"
+
+// Write permission check failed  
+// "log config error in field 'file.path' with value '/readonly/logs': log directory validation failed: permission denied"
+
+// Path required for initialization
+// "log config error in field 'file.path': path is required for file handler initialization"
 ```
 
 ## Best Practices
