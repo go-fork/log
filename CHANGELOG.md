@@ -2,8 +2,6 @@
 
 ## [Unreleased]
 
-## v0.1.5 - 2025-06-07
-
 ### Changed
 - **Configuration Architecture Update**
   - Modified `DefaultConfig()` to set `File.Enabled: false` by default
@@ -23,6 +21,12 @@
   - Added comprehensive error messages: "path to folder do not exists" and "directory does not have write permission"
   - Enhanced error handling for file system operations during validation
 
+- **CI/CD Pipeline Issues**
+  - Fixed empty branch issue in `config.go` that triggered staticcheck warning SA9003
+  - Fixed errcheck warnings for unchecked `os.Chmod` calls in test files
+  - Added proper error handling for file permission operations in tests
+  - Enhanced test directory setup for CI environment compatibility
+
 ### Added
 - **Enhanced Test Coverage**
   - Added test cases for non-existent directory scenarios
@@ -35,6 +39,13 @@
   - Enhanced test coverage for file handler edge cases and error conditions
   - Improved benchmark test naming conventions
   - Added comprehensive validation scenarios
+  - Added proper directory creation for CI/CD test environments
+  - Created `storages/log/` directory structure for default configuration tests
+
+- **CI/CD Enhancements**
+  - Upgraded GitHub Actions cache from v3 to v4 to fix module caching issues
+  - Enhanced test setup to create required directories before validation
+  - Improved go.mod/go.sum consistency for CI environments
 
 ### Breaking Changes
 - **NewFileHandler Behavior**

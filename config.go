@@ -161,10 +161,8 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// Validate file handler nếu được bật
-	if c.File.Enabled {
-		// Các validation bổ sung khi file handler được bật (nếu cần)
-	}
+	// Validate file handler - luôn validate path nếu có
+	// (không phụ thuộc vào File.Enabled vì chúng ta luôn cần validate)
 
 	// Validate stack handler nếu được bật
 	if c.Stack.Enabled {

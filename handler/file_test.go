@@ -85,7 +85,7 @@ func TestFileHandler_New_WithNoWritePermission(t *testing.T) {
 	dir := createTempDir(t)
 	defer func() {
 		// Khôi phục quyền để có thể xóa
-		os.Chmod(dir, 0755)
+		_ = os.Chmod(dir, 0755)
 		os.RemoveAll(dir)
 	}()
 
@@ -686,13 +686,13 @@ func TestFileHandler_New_ErrorMessages(t *testing.T) {
 			name: "directory_read_only",
 			setupFunc: func() string {
 				dir := createTempDir(t)
-				os.Chmod(dir, 0444) // read-only
+				_ = os.Chmod(dir, 0444) // read-only
 				return filepath.Join(dir, "readonly.log")
 			},
 			expectedError: "directory does not have write permission",
 			cleanup: func(path string) {
 				dir := filepath.Dir(path)
-				os.Chmod(dir, 0755)
+				_ = os.Chmod(dir, 0755)
 				os.RemoveAll(dir)
 			},
 		},
