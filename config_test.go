@@ -1,6 +1,9 @@
 package log
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -148,6 +151,23 @@ func TestConfig_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Tạo thư mục cần thiết cho test cases có file path
+			if tt.config.File.Path != "" {
+				dir := filepath.Dir(tt.config.File.Path)
+				if dir != "." {
+					err := os.MkdirAll(dir, 0755)
+					if err != nil {
+						t.Fatalf("Failed to create test directory %s: %v", dir, err)
+					}
+					// Cleanup sau test
+					defer func() {
+						if strings.HasPrefix(dir, "/tmp/") || strings.HasPrefix(dir, "storages/") {
+							os.RemoveAll(dir)
+						}
+					}()
+				}
+			}
+
 			err := tt.config.Validate()
 
 			if tt.expectedErr == "" {
@@ -204,6 +224,14 @@ func TestConfig_ValidateAllLogLevels(t *testing.T) {
 		handler.FatalLevel,
 	}
 
+	// Tạo thư mục test trước
+	testDir := "/tmp/test-logs"
+	err := os.MkdirAll(testDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+	defer os.RemoveAll(testDir)
+
 	for _, level := range validLevels {
 		t.Run("Valid level: "+level.String(), func(t *testing.T) {
 			config := &Config{
@@ -245,6 +273,14 @@ func TestConfig_ValidateFileHandlerConfigurations(t *testing.T) {
 			expectedErr: true,
 		},
 	}
+
+	// Tạo thư mục test trước
+	testDir := "/tmp/logs"
+	err := os.MkdirAll(testDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+	defer os.RemoveAll(testDir)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

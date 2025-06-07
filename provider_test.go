@@ -33,6 +33,14 @@ func TestServiceProvider_Register(t *testing.T) {
 	// Tạo mock application và container
 	mockApp, container := setupMockApplication(t)
 
+	// Tạo thư mục log trước khi chạy test
+	logDir := filepath.Join(os.TempDir(), "logs")
+	err := os.MkdirAll(logDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create log directory: %v", err)
+	}
+	defer os.RemoveAll(logDir)
+
 	// Tạo mock config manager
 	mockConfigManager := mocks.NewMockManager(t)
 	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
@@ -181,6 +189,14 @@ func TestServiceProvider_WithStackHandler(t *testing.T) {
 	// Tạo mock application và container
 	mockApp, container := setupMockApplication(t)
 
+	// Tạo thư mục log trước khi chạy test
+	logDir := filepath.Join(os.TempDir(), "logs")
+	err := os.MkdirAll(logDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create log directory: %v", err)
+	}
+	defer os.RemoveAll(logDir)
+
 	// Tạo mock config manager với cấu hình stack handler
 	mockConfigManager := mocks.NewMockManager(t)
 	mockConfigManager.On("UnmarshalKey", "log", mock.AnythingOfType("*log.Config")).Run(func(args mock.Arguments) {
@@ -228,6 +244,14 @@ func TestServiceProvider_WithStackHandler(t *testing.T) {
 func TestServiceProvider_ContainerBindingResolution(t *testing.T) {
 	// Tạo mock application và container
 	mockApp, container := setupMockApplication(t)
+
+	// Tạo thư mục log trước khi chạy test
+	logDir := filepath.Join(os.TempDir(), "logs")
+	err := os.MkdirAll(logDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create log directory: %v", err)
+	}
+	defer os.RemoveAll(logDir)
 
 	// Tạo mock config manager
 	mockConfigManager := mocks.NewMockManager(t)
@@ -409,6 +433,14 @@ func BenchmarkServiceProvider_New(b *testing.B) {
 
 // BenchmarkServiceProviderRegister đo hiệu suất đăng ký ServiceProvider
 func BenchmarkServiceProvider_Register(b *testing.B) {
+	// Tạo thư mục log trước khi chạy benchmark
+	logDir := filepath.Join(os.TempDir(), "logs")
+	err := os.MkdirAll(logDir, 0755)
+	if err != nil {
+		b.Fatalf("Failed to create log directory: %v", err)
+	}
+	defer os.RemoveAll(logDir)
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
@@ -450,6 +482,14 @@ func BenchmarkServiceProvider_Register(b *testing.B) {
 
 // BenchmarkServiceProviderRegisterWithStackHandler đo hiệu suất với stack handler
 func BenchmarkServiceProvider_Register_WithStackHandler(b *testing.B) {
+	// Tạo thư mục log trước khi chạy benchmark
+	logDir := filepath.Join(os.TempDir(), "logs")
+	err := os.MkdirAll(logDir, 0755)
+	if err != nil {
+		b.Fatalf("Failed to create log directory: %v", err)
+	}
+	defer os.RemoveAll(logDir)
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
