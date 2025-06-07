@@ -179,8 +179,8 @@ func TestConfig_DefaultConfig(t *testing.T) {
 	assert.Equal(t, handler.InfoLevel, config.Level)
 	assert.True(t, config.Console.Enabled)
 	assert.True(t, config.Console.Colored)
-	assert.False(t, config.File.Enabled) // Mặc định File.Enabled = false
-	assert.Equal(t, "", config.File.Path) // Default path is empty
+	assert.False(t, config.File.Enabled)                      // Mặc định File.Enabled = false
+	assert.Equal(t, "", config.File.Path)                     // Default path is empty
 	assert.Equal(t, int64(10*1024*1024), config.File.MaxSize) // 10MB
 	assert.False(t, config.Stack.Enabled)
 	assert.False(t, config.Stack.Handlers.Console)

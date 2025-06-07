@@ -86,7 +86,7 @@ func DefaultConfig() *Config {
 		},
 		File: FileConfig{
 			Enabled: false,
-			Path:    "", // Empty path - user must set this explicitly
+			Path:    "",               // Empty path - user must set this explicitly
 			MaxSize: 10 * 1024 * 1024, // 10MB
 		},
 		Stack: StackConfig{

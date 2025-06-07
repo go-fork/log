@@ -2,26 +2,37 @@
 
 ## [Unreleased]
 
+## v0.1.6 - 2025-06-07
+
 ### Changed
 - **Default Configuration Architecture**
-  - Modified `DefaultConfig()` to use empty file path by default
-  - Updated `File.Enabled` to `false` by default for better security
+  - Modified `DefaultConfig()` to use empty file path by default for better security
+  - Updated `File.Enabled` to `false` by default to prevent accidental file creation
   - Enhanced validation logic to only require file path when file handler is actually used
   - Improved separation between default configuration and user-specific settings
+  - Better configuration validation that respects actual handler usage patterns
 
 ### Fixed
-- **Repository Structure**
+- **Repository Structure Cleanup**
   - Removed dependency on hardcoded `storages/log/app.log` directory structure
+  - Eliminated repository pollution with unnecessary directory structures
   - Tests now skip gracefully when required directories don't exist instead of creating them
   - Enhanced test portability by using `t.TempDir()` for temporary test directories
-  - Eliminated repository pollution with unnecessary directory structures
+  - Cleaner development experience without mandatory directory creation
 
 ### Improved
-- **Test Infrastructure**
+- **Test Infrastructure Modernization**
   - Enhanced test reliability by removing hardcoded directory dependencies
-  - Better error handling when directories don't exist (skip vs fail)
+  - Better error handling when directories don't exist (skip vs fail approach)
   - More portable test suite that works across different environments
   - Cleaner repository structure without test artifacts
+  - Improved CI/CD compatibility with flexible directory requirements
+
+### Technical Details
+- **Validation Logic**: File path validation now conditional based on actual handler usage
+- **Default Behavior**: More secure defaults that require explicit user configuration
+- **Test Strategy**: Skip-based testing for missing dependencies instead of creation
+- **Development Experience**: Cleaner repository without mandatory directory structures
 
 ## v0.1.5 - 2025-06-07
 

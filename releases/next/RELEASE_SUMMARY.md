@@ -1,4 +1,4 @@
-# v0.1.6 Release Summary
+# v0.1.7 Release Summary
 
 ## Quick Overview
 One-line summary of what this release brings.
